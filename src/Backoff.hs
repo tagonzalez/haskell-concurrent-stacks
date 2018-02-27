@@ -5,14 +5,7 @@ import Prelude hiding (break)
 import Data.IORef
 import System.Random
 import qualified Control.Concurrent as C
-data Backoff = Back {minDelay :: Int, maxDelay :: Int, limit :: IORef Int}
-
--- Test
--- g <- newStdGen
--- testMinDelay = 1
--- testMaxDelay = 10
--- testLimit = newIORef testMinDelay
--- testBackoff = Back testMinDelay testMaxDelay (testMinDelay)
+data Backoff = BCK {minDelay :: Int, maxDelay :: Int, limit :: IORef Int}
 
 backoff b = do {
     backoffLimit <- readIORef(limit b);

@@ -1,7 +1,6 @@
 
 module Backoff where
 
-import Prelude hiding (break)
 import Data.IORef
 import System.Random
 import qualified Control.Concurrent as C

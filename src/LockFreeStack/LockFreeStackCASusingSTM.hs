@@ -1,19 +1,21 @@
-module LockFreeStackCASusingSTM where
+module LockFreeStack.LockFreeStackCASusingSTM where
 
 import Data.IORef
 import Control.Concurrent.STM
-import Backoff
-import AtomCASusingSTM
-import NodeSTM
+import Common.Backoff
+import Common.AtomCASusingSTM
+import Common.NodeSTM
+import Control.Exception
+import Common.Exceptions
 
 data LockFreeStack a = LFS { top :: TVar (Node a), backoffLFS :: Backoff }
 
-createLFS :: Int -> Int -> Int -> IO (LockFreeStack a)
-createLFS min max limit = do
-    lim <- newIORef limit
-    bck <- return $ BCK min max lim
-    null <- atomically $ newTVar Null
-    return $ LFS null bck
+newLFS :: Int -> Int -> Int -> IO (LockFreeStack a)
+newLFS min max limit = do
+  lim <- newIORef limit
+  bck <- newBackoff min max limit
+  nullRef <- atomically $ newTVar Null
+  return $ LFS nullRef bck
 
 tryPush :: Eq a => LockFreeStack a -> Node a -> IO Bool
 tryPush lfs node = do
@@ -21,28 +23,25 @@ tryPush lfs node = do
   atomically $ writeTVar (next node) oldTop
   atomCAS (top lfs) oldTop node
 
-loopPushLFS :: Eq a => LockFreeStack a -> Node a -> IO ()
-loopPushLFS lfs node = do
-  b <- tryPush lfs node
-  if b
-    then
-      return ()
-    else do
-      backoff (backoffLFS lfs)
-      loopPushLFS lfs node
-
-
 pushLFS :: Eq a => LockFreeStack a -> a -> IO ()
 pushLFS lfs value = do
   node <- newNode value
   loopPushLFS lfs node
+  where loopPushLFS lfs node = do
+          b <- tryPush lfs node
+          if b
+            then
+              return ()
+            else do
+              backoff (backoffLFS lfs)
+              loopPushLFS lfs node
 
 tryPop :: Eq a => LockFreeStack a -> IO (Node a)
 tryPop lfs = do
-  oldTop <- atomically $ readTVar (top lfs)
-  if oldTop == Null
+    oldTop <- atomically $ readTVar (top lfs)
+    if oldTop == Null
     then
-      error "Empty!"
+      throw EmptyException
     else do
       newTop <- atomically $ readTVar (next oldTop)
       b <- atomCAS (top lfs) oldTop newTop
@@ -50,18 +49,17 @@ tryPop lfs = do
         then return oldTop
         else return Null
 
-loopPop :: Eq a => LockFreeStack a -> IO a
-loopPop lfs = do
-  returnNode <- tryPop lfs
-  if returnNode /= Null
-    then
-      return (val returnNode)
-    else do
-      backoff $ backoffLFS lfs
-      loopPop lfs
-
 popLFS :: Eq a => LockFreeStack a -> IO a
-popLFS = loopPop
+popLFS =
+    loopPop
+    where loopPop lfs = do
+            returnNode <- tryPop lfs
+            if returnNode /= Null
+            then
+              return (val returnNode)
+            else do
+              backoff $ backoffLFS lfs
+              loopPop lfs
 
 -- Testing
 lfsNodesToListIO :: Node a -> IO [a]
@@ -78,8 +76,8 @@ lfsToListIO lfs = do
   topNode <- atomically $ readTVar (top lfs)
   lfsNodesToListIO topNode
 
-main = do
-  lfs <- createLFS 1 1 1
+test = do
+  lfs <- newLFS 1 1 1
   pushLFS lfs 1
   pushLFS lfs 2
   pushLFS lfs 3

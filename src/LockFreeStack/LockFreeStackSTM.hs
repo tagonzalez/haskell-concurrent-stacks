@@ -1,24 +1,26 @@
-module LockFreeStackSTM where
+module LockFreeStack.LockFreeStackSTM where
 
 import Data.IORef
 import Control.Concurrent.STM
-import Backoff
-import NodeSTM
+import Common.Backoff
+import Common.NodeSTM
+import Control.Exception
+import Common.Exceptions
 
 data LockFreeStack a = LFS { top :: TVar (Node a), backoffLFS :: Backoff }
 
-createLFS :: Int -> Int -> Int -> IO (LockFreeStack a)
-createLFS min max limit = do
-    lim <- newIORef limit
-    bck <- return $ BCK min max lim
-    null <- atomically $ newTVar Null
-    return $ LFS null bck
+newLFS :: Int -> Int -> Int -> IO (LockFreeStack a)
+newLFS min max limit = do
+  lim <- newIORef limit
+  bck <- newBackoff min max limit
+  null <- atomically $ newTVar Null
+  return $ LFS null bck
 
 tryPush:: LockFreeStack a -> Node a -> STM ()
 tryPush lfs node = do
-    oldTop <- readTVar $ top lfs
-    writeTVar (next node) oldTop
-    writeTVar (top lfs) node
+  oldTop <- readTVar $ top lfs
+  writeTVar (next node) oldTop
+  writeTVar (top lfs) node
 
 pushLFS:: LockFreeStack a -> a -> IO ()
 pushLFS lfs value = do
@@ -27,13 +29,13 @@ pushLFS lfs value = do
 
 tryPop:: Show a => LockFreeStack a -> STM a
 tryPop lfs = do
-    resNode <- readTVar $ top lfs
-    case resNode of
-        Nd v nxt -> do
-            newTop <- readTVar nxt
-            writeTVar (top lfs) newTop
-            return v
-        Null -> error "Empty!"
+  resNode <- readTVar $ top lfs
+  case resNode of
+    Nd v nxt -> do
+      newTop <- readTVar nxt
+      writeTVar (top lfs) newTop
+      return v
+    Null -> throw EmptyException
 
 popLFS:: Show a => LockFreeStack a -> IO a
 popLFS lfs = atomically $ tryPop lfs
@@ -54,8 +56,8 @@ lfsToListIO lfs = do
   topNode <- atomically $ readTVar (top lfs)
   lfsNodesToListIO topNode
 
-main = do
-  lfs <- createLFS 1 1 1
+test = do
+  lfs <- newLFS 1 1 1
   pushLFS lfs 1
   pushLFS lfs 2
   thingy <- popLFS lfs

@@ -15,7 +15,7 @@ recordEliminationSuccess rp = do
   curr <- readIORef $ currentRange rp
   if curr < max
       then writeIORef (currentRange rp) (curr + 1)
-        else return ()
+      else return ()
 
 recordEliminationTimeout :: RangePolicy -> IO ()
 recordEliminationTimeout rp = do

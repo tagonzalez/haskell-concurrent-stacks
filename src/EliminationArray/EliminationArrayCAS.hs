@@ -21,4 +21,4 @@ newEliminationArray capacity duration = do
 visit :: Eq a => EliminationArray a -> Maybe a -> Int -> IO (Maybe a)
 visit elimArr value range = do
   slot <- randomRIO (0, range)
-  exchange ((exchanger elimArr) !! slot) value (fromIntegral (duration elimArr) :: Millisecond)
+  exchange ((exchanger elimArr) !! slot) value (duration elimArr)

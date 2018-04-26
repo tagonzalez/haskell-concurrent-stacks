@@ -10,4 +10,3 @@ data EmptyException = EmptyException
 
 instance Exception TimeoutException
 instance Exception EmptyException
-

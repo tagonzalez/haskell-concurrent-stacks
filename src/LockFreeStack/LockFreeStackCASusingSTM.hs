@@ -10,10 +10,9 @@ import Common.Exceptions
 
 data LockFreeStack a = LFS { top :: TVar (Node a), backoffLFS :: Backoff }
 
-newLFS :: Int -> Int -> Int -> IO (LockFreeStack a)
-newLFS min max limit = do
-  lim <- newIORef limit
-  bck <- newBackoff min max limit
+newLFS :: Int -> Int -> IO (LockFreeStack a)
+newLFS min max = do
+  bck <- newBackoff min max
   nullRef <- atomically $ newTVar Null
   return $ LFS nullRef bck
 
@@ -38,28 +37,27 @@ pushLFS lfs value = do
 
 tryPop :: Eq a => LockFreeStack a -> IO (Node a)
 tryPop lfs = do
-    oldTop <- atomically $ readTVar (top lfs)
-    if oldTop == Null
-    then
-      throw EmptyException
-    else do
-      newTop <- atomically $ readTVar (next oldTop)
-      b <- atomCAS (top lfs) oldTop newTop
-      if b
-        then return oldTop
-        else return Null
+  oldTop <- atomically $ readTVar (top lfs)
+  if oldTop == Null
+  then
+    throw EmptyException
+  else do
+    newTop <- atomically $ readTVar (next oldTop)
+    b <- atomCAS (top lfs) oldTop newTop
+    if b
+      then return oldTop
+      else return Null
 
 popLFS :: Eq a => LockFreeStack a -> IO a
-popLFS =
-    loopPop
-    where loopPop lfs = do
-            returnNode <- tryPop lfs
-            if returnNode /= Null
-            then
-              return (val returnNode)
-            else do
-              backoff $ backoffLFS lfs
-              loopPop lfs
+popLFS = loopPop
+  where loopPop lfs = do
+          returnNode <- tryPop lfs
+          if returnNode /= Null
+          then
+            return (val returnNode)
+          else do
+            backoff (backoffLFS lfs)
+            loopPop lfs
 
 -- Testing
 lfsNodesToListIO :: Node a -> IO [a]
@@ -75,12 +73,3 @@ lfsToListIO :: LockFreeStack a -> IO [a]
 lfsToListIO lfs = do
   topNode <- atomically $ readTVar (top lfs)
   lfsNodesToListIO topNode
-
-test = do
-  lfs <- newLFS 1 1 1
-  pushLFS lfs 1
-  pushLFS lfs 2
-  pushLFS lfs 3
-  popLFS lfs
-  res <- lfsToListIO lfs
-  putStrLn $ show res

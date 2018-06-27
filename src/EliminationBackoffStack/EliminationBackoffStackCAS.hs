@@ -2,61 +2,91 @@
 module EliminationBackoffStack.EliminationBackoffStackCAS where
 
 import EliminationArray.EliminationArrayCAS
-import LockFreeStack.LockFreeStackCAS
 import Common.RangePolicy
 import Common.Node
+import Common.AtomCAS
 import Control.Exception
 import Common.Exceptions
+import Data.IORef
+import Control.Monad.Loops
+import Data.Maybe
+import Utils
+import Common.Backoff
+import Data.TLS.GHC
 
-data EliminationBackoffStack a = EBS {lfs :: LockFreeStack a, capacity :: Int, eliminationArray :: EliminationArray a, policy :: RangePolicy}
+data EliminationBackoffStack a = EBS {top :: IORef (Node a), capacity :: Int, eliminationArray :: EliminationArray a, policy :: TLS RangePolicy}
 
 newEBS :: Int -> Integer ->  IO (EliminationBackoffStack a)
 newEBS capacity duration = do
-  lfs <- newLFS 0 0 -- Backoff isn't used for EBS functions, so it's parameters don't matter
+  nullRef <- newIORef Null
   let maxRange = capacity - 1 -- Last accessible position within the elimination array (0-based index)
-  rgPcy <- newRangePolicy maxRange
+  rgPcy <- mkTLS $ newRangePolicy maxRange -- range policy must be thread local according to Shavit
   elArr <- newEliminationArray capacity duration
-  return $ EBS lfs capacity elArr rgPcy
+  return $ EBS nullRef capacity elArr rgPcy
+
+tryPush :: Eq a => EliminationBackoffStack a -> Node a -> IO Bool
+tryPush ebs node = do
+  oldTop <- readIORef (top ebs)
+  writeIORef (next node) oldTop
+  atomCAS (top ebs) oldTop node
 
 pushEBS :: Eq a => EliminationBackoffStack a -> a -> IO ()
 pushEBS ebs value = do
-  range <- getRange $ policy ebs
+  ret <- newIORef True
+  rangePolicy <- getTLS (policy ebs)
+
+  range <- getRange rangePolicy
   node <- newNode value
-  loopPushEBS ebs node value range
+  whileM_ (readIORef ret) $ do
+    b <- tryPush ebs node
+    if b
+      then writeIORef ret False
+      else (catch (tryExchangePush ebs node value range ret rangePolicy) $ \( e :: TimeoutException) -> do
+          recordEliminationTimeout rangePolicy)
 
-  where loopPushEBS ebs node value range = do
-          b <- tryPush (lfs ebs) node
-          if b
-            then return ()
-            else catch (exchangePush ebs node value range) $ \( e :: TimeoutException) -> do
-              recordEliminationTimeout $ policy ebs
-              loopPushEBS ebs node value range
-
-        exchangePush ebs node value range = do
+  where tryExchangePush ebs node value range ret rangePolicy = do
           otherValue <- visit (eliminationArray ebs) (Just value) range
-          case otherValue of
-            Nothing -> do
-              recordEliminationSuccess $ policy ebs
-              return ()
-            otherwise -> loopPushEBS ebs node value range
+          if otherValue == Nothing
+            then do
+              recordEliminationSuccess rangePolicy
+              writeIORef ret False
+            else return ()
+
+tryPop :: Eq a => EliminationBackoffStack a -> IO (Node a)
+tryPop ebs = do
+  oldTop <- readIORef (top ebs)
+  if oldTop == Null
+    then
+      throw EmptyException
+    else do
+      newTop <- readIORef (next oldTop)
+      b <- atomCAS (top ebs) oldTop newTop
+      if b
+        then return oldTop
+        else return Null
 
 popEBS :: Eq a => EliminationBackoffStack a -> IO a
 popEBS ebs = do
-  range <- getRange $ policy ebs
-  loopPopEBS ebs range
+  res <- newIORef Nothing
+  ret <- newIORef True
+  rangePolicy <- getTLS (policy ebs)
 
-  where loopPopEBS ebs range = do
-          returnNode <- tryPop (lfs ebs)
-          if returnNode /= Null
-            then return $ val returnNode
-            else catch (exchangePop ebs range) $ \( e :: TimeoutException) -> do
-              recordEliminationTimeout $ policy ebs
-              loopPopEBS ebs range
+  range <- getRange rangePolicy
+  whileM_ (readIORef ret) $ do
+    returnNode <- tryPop ebs
+    if returnNode /= Null
+      then do
+        writeIORef res $ Just (val returnNode)
+        writeIORef ret False
+      else (catch (exchangePop ebs range ret res rangePolicy) $ \( e :: TimeoutException) -> do
+          recordEliminationTimeout rangePolicy)
+  readIORef res >>= return.fromJust
 
-        exchangePop ebs range = do
+  where exchangePop ebs range ret res rangePolicy = do
           otherValue <- visit (eliminationArray ebs) Nothing range
           case otherValue of
             Just v -> do
-              recordEliminationSuccess $ policy ebs
-              return v
-            otherwise -> loopPopEBS ebs range
+              recordEliminationSuccess rangePolicy
+              writeIORef res (Just v)
+              writeIORef ret False
+            otherwise -> return ()

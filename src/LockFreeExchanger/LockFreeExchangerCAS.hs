@@ -7,69 +7,80 @@ import Common.AtomCAS
 import Common.State
 import Control.Exception
 import Common.Exceptions
+import System.CPUTime
+import Control.Monad.Loops
+import Control.Concurrent
+import System.Clock
 
 data LockFreeExchanger a = LFE {slot :: IORef (Maybe a, State)}
 
+getSlot :: IORef (Maybe a, State) -> IORef State -> IO (Maybe a)
+getSlot slot stampHolder = do
+  (val, state) <- readIORef slot
+  writeIORef stampHolder state
+  return val
+
 newLockFreeExchanger :: IO (LockFreeExchanger a)
-newLockFreeExchanger = do
-  value <- newIORef (Nothing,EMPTY)
-  return $ LFE value
+newLockFreeExchanger = (newIORef (Nothing, EMPTY)) >>= return.LFE
 
-emptyCaseLoop :: LockFreeExchanger a -> Integer -> State -> IO (Maybe a)
-emptyCaseLoop lfe timeBound stampHolder = do
-  sysTime <- getTime Realtime
-  if (toNanoSecs sysTime) < timeBound
-    then do
-      (yrItem,stampHolder) <- atomicReadIORef $ slot lfe
-      if stampHolder == BUSY
-        then do
-          writeIORef (slot lfe) (Nothing, EMPTY)
-          return yrItem
-        else
-          emptyCaseLoop lfe timeBound stampHolder
-    else return Nothing -- Irrelevant
-
-exchangeLoop :: Eq a =>  LockFreeExchanger a -> Maybe a -> Integer -> State -> IO (Maybe a)
-exchangeLoop lfe myItem timeBound stampHolder = do
-  sysTime <- getTime Realtime
-  if (toNanoSecs sysTime) > timeBound
-    then
-      throw TimeoutException
-    else do
-      (yrItem, stampHolder) <- atomicReadIORef $ slot lfe
-      stamp <- return stampHolder
-      case stamp of
-        EMPTY -> do
-          b <- atomCAS (slot lfe) (yrItem, EMPTY) (myItem, WAITING)
-          if b
-            then do
-              emptyCaseLoop lfe timeBound stampHolder
-              b <- atomCAS (slot lfe) (myItem, WAITING) (Nothing, EMPTY)
-              if b
-                then
-                  throw TimeoutException
-                else do
-                  (yrItem, stampHolder) <- atomicReadIORef $ slot lfe
-                  atomicWriteIORef (slot lfe) (Nothing, EMPTY)
-                  return yrItem
-            else exchangeLoop lfe myItem timeBound stampHolder
-        WAITING -> do
-          b <- atomCAS (slot lfe) (yrItem, WAITING) (myItem, BUSY)
-          if b
-            then return yrItem
-            else exchangeLoop lfe myItem timeBound stampHolder
-        BUSY -> exchangeLoop lfe myItem timeBound stampHolder
-
-exchange :: (Eq a,TimeUnit b) => LockFreeExchanger a -> Maybe a -> b -> IO (Maybe a)
+exchange :: (Eq a) => LockFreeExchanger a -> Maybe a -> Integer -> IO (Maybe a)
 exchange lfe myItem timeout = do
-  let nanos = fromIntegral ((convertUnit timeout) :: Nanosecond) :: Integer
-  systemTime <- getTime Realtime
-  let timeBound = (toNanoSecs (systemTime)) + nanos
-  let stampHolder = EMPTY
-  exchangeLoop lfe myItem timeBound stampHolder
+  ret <- newIORef True
+  res <- newIORef Nothing
+  let nanos = timeout * (10 ^ 6) -- timeout unit is millisecs
+  timeBound <- systemNanoTime >>= return.((+) nanos)
+  stampHolder <- newIORef EMPTY
+  whileM_ (readIORef ret) $ do
+    timeoutDone <- systemNanoTime >>= return.((<) timeBound)
+    if timeoutDone
+      then do
+        throw TimeoutException
+      else do
+        yrItem <- getSlot (slot lfe) stampHolder
+        stamp <- readIORef stampHolder
+        case stamp of
+          EMPTY -> do
+            b <- atomCAS (slot lfe) (yrItem, EMPTY) (myItem, WAITING)
+            if b
+              then do
+                whileM_ (emptyCaseLoopCondition ret timeBound) $ do
+                  yrItem <- getSlot (slot lfe) stampHolder
+                  stampBusy <- (readIORef stampHolder) >>= return.((==) BUSY)
+                  if stampBusy
+                    then do
+                      writeIORef (slot lfe) (Nothing, EMPTY)
+                      writeIORef ret False
+                      writeIORef res yrItem
+                    else
+                      return ()
+                breakFromWhile <- readIORef ret >>= return.not
+                if breakFromWhile
+                  then return ()
+                  else do
+                    b <- atomCAS (slot lfe) (myItem, WAITING) (Nothing, EMPTY)
+                    if b
+                      then do
+                        throw TimeoutException
+                      else do
+                        yrItem <- getSlot (slot lfe) stampHolder
+                        writeIORef (slot lfe) (Nothing, EMPTY)
+                        writeIORef res yrItem
+              else do
+                return ()
+          WAITING -> do
+            b <- atomCAS (slot lfe) (yrItem, WAITING) (myItem, BUSY)
+            if b
+              then do
+                writeIORef ret False
+                writeIORef res yrItem
+              else
+                return ()
+          BUSY -> do
+            return ()
+  readIORef res
 
-test = do
-  let stampHolder = 1
-  let (algo,stampHolder) = (2,2)
-  putStrLn (show stampHolder)
-  putStrLn "Todo OK"
+  where emptyCaseLoopCondition ret timeBound = do
+          timeoutNotDone <- systemNanoTime >>= return.((>) timeBound)
+          (readIORef ret) >>= return.((&&) timeoutNotDone)
+
+        systemNanoTime = (getTime Realtime) >>= return.toNanoSecs

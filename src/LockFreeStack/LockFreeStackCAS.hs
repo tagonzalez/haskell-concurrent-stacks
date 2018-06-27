@@ -6,6 +6,9 @@ import Common.AtomCAS
 import Common.Node
 import Control.Exception
 import Common.Exceptions
+import Control.Monad.Loops
+import Data.Maybe
+import Utils
 
 data LockFreeStack a = LFS { top :: IORef (Node a), backoffLFS :: Backoff }
 
@@ -23,16 +26,14 @@ tryPush lfs node = do
 
 pushLFS :: Eq a => LockFreeStack a -> a -> IO ()
 pushLFS lfs value = do
+  ret <- newIORef True
+
   node <- newNode value
-  loopPushLFS lfs node
-  where loopPushLFS lfs node = do
-          b <- tryPush lfs node
-          if b
-            then
-              return ()
-            else do
-              backoff (backoffLFS lfs)
-              loopPushLFS lfs node
+  whileM_ (readIORef ret) $ do
+    b <- tryPush lfs node
+    if b
+      then writeIORef ret False
+      else backoff $ backoffLFS lfs
 
 tryPop :: Eq a => LockFreeStack a -> IO (Node a)
 tryPop lfs = do
@@ -48,27 +49,16 @@ tryPop lfs = do
         else return Null
 
 popLFS :: Eq a => LockFreeStack a -> IO a
-popLFS = loopPop
-  where loopPop lfs = do
-          returnNode <- tryPop lfs
-          if returnNode /= Null
-          then
-            return (val returnNode)
-          else do
-            backoff (backoffLFS lfs)
-            loopPop lfs
+popLFS lfs = do
+  ret <- newIORef True
+  res <- newIORef Nothing
 
--- Testing
-lfsNodesToListIO :: Node a -> IO [a]
-lfsNodesToListIO node =
-  case node of
-    Nd v nxt -> do
-      nextNode <- readIORef nxt
-      acc <- lfsNodesToListIO nextNode
-      return $ v:acc
-    Null -> return []
+  whileM_ (readIORef ret) $ do
+    returnNode <- tryPop lfs
+    if returnNode /= Null
+      then do
+        writeIORef res $ Just (val returnNode)
+        writeIORef ret False
+      else backoff (backoffLFS lfs)
 
-lfsToListIO :: LockFreeStack a -> IO [a]
-lfsToListIO lfs = do
-  topNode <- readIORef $ top lfs
-  lfsNodesToListIO topNode
+  readIORef res >>= return.fromJust

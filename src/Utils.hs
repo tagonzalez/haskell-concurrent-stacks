@@ -22,4 +22,6 @@ timeIt msg action = do
   action
   endTime <- (getTime Realtime) >>= return.toNanoSecs
   let inSecs = (fromIntegral (endTime - startTime)) / (10 ** 9)
-  putStrLn $ "[" ++ msg ++ "]" ++ ":" ++ " " ++ (show inSecs)
+  if msg == ""
+    then print inSecs
+    else putStrLn $ "[" ++ msg ++ "]" ++ ":" ++ " " ++ (show inSecs)

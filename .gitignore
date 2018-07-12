@@ -5,3 +5,5 @@ bibliography
 *.csv
 bin
 experiments
+*.gsheet
+test.hs

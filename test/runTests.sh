@@ -1,4 +1,4 @@
-numberOfCores=$1
+numberOfCores=3
 for filename in ./bin/*; do
     echo "Tests for $filename"
     $filename +RTS -N$numberOfCores

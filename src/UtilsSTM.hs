@@ -1,6 +1,6 @@
-module Utils where
+module UtilsSTM where
 
-import Common.Node
+import Common.NodeSTM
 import Data.IORef
 import System.Clock
 import Control.Monad.STM
@@ -11,11 +11,11 @@ repeatIO n action = do
   action
   repeatIO (n - 1) action
 
-nodesToListIO node =
+nodesToListSTM node =
   case node of
     Nd v nxt -> do
-      nextNode <- readIORef nxt
-      acc <- nodesToListIO nextNode
+      nextNode <- atomically $ readTVar nxt
+      acc <- nodesToListSTM nextNode
       return $ v:acc
     Null -> return []
 

@@ -1,9 +1,12 @@
-all: LockFreeStackCAS.spec LockFreeExchangerCAS.spec EliminationBackoffStackCAS.spec
+all: LockFreeStackCAS.spec LockFreeExchangerCAS.spec LockFreeStackCASusingSTM.spec EliminationBackoffStackCAS.spec
 
 FLAGS = -O2 -threaded -rtsopts -i../src/
 
 LockFreeStackCAS.spec: LockFreeStack/LockFreeStackCAS.spec.hs
 	ghc $(FLAGS) LockFreeStack/LockFreeStackCAS.spec.hs -o bin/LockFreeStackCASTest
+
+LockFreeStackCASusingSTM.spec: LockFreeStack/LockFreeStackCAS.spec.hs
+	ghc $(FLAGS) LockFreeStack/LockFreeStackCASusingSTM.spec.hs -o bin/LockFreeStackCASusingSTMTest
 
 LockFreeExchangerCAS.spec: LockFreeExchanger/LockFreeExchangerCAS.spec.hs
 	ghc $(FLAGS) LockFreeExchanger/LockFreeExchangerCAS.spec.hs -o bin/LockFreeExchangerCASTest

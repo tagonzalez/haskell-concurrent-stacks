@@ -5,12 +5,10 @@ import System.Clock
 import Data.Time.Units
 import Common.AtomCAS
 import Common.State
-import Control.Exception
 import Common.Exceptions
-import System.CPUTime
+import Control.Exception
 import Control.Monad.Loops
 import Control.Concurrent
-import System.Clock
 
 data LockFreeExchanger a = LFE {slot :: IORef (Maybe a, State)}
 

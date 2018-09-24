@@ -20,9 +20,9 @@ nodesToListSTM node =
     Null -> return []
 
 timeIt msg action = do
-  startTime <- (getTime Realtime) >>= return.toNanoSecs
+  startTime <- (getTime Monotonic) >>= return.toNanoSecs
   action
-  endTime <- (getTime Realtime) >>= return.toNanoSecs
+  endTime <- (getTime Monotonic) >>= return.toNanoSecs
   let inSecs = (fromIntegral (endTime - startTime)) / (10 ** 9)
   if msg == ""
     then print inSecs

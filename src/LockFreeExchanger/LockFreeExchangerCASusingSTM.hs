@@ -1,14 +1,14 @@
 module LockFreeExchanger.LockFreeExchangerCASusingSTM where
 
-import Control.Concurrent.STM
+import Data.IORef
 import System.Clock
 import Data.Time.Units
 import Common.AtomCASusingSTM
 import Common.State
-import Control.Exception
 import Common.Exceptions
-import Data.IORef
+import Control.Exception
 import Control.Monad.Loops
+import Control.Concurrent.STM
 
 data LockFreeExchanger a = LFE {slot :: TVar (Maybe a, State)}
 
@@ -19,10 +19,7 @@ getSlot slot stampHolder = do
   return val
 
 newLockFreeExchanger :: IO (LockFreeExchanger a)
-newLockFreeExchanger = do
-  value <- atomically $ newTVar (Nothing,EMPTY)
-  return $ LFE value
--- newLockFreeExchanger = return $ (atomically $ newTVar (Nothing,EMPTY) >>= LFE)
+newLockFreeExchanger = (atomically $ newTVar (Nothing,EMPTY)) >>= return.LFE
 
 exchange :: (Eq a) => LockFreeExchanger a -> Maybe a -> Integer -> IO (Maybe a)
 exchange lfe myItem timeout = do

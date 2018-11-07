@@ -2,7 +2,6 @@ module EliminationArray.EliminationArrayCASusingSTM where
 
 import LockFreeExchanger.LockFreeExchangerCASusingSTM
 import System.Random
-import Data.Time.Units
 
 data EliminationArray a = EA {exchanger :: [LockFreeExchanger a], duration :: Integer}
 

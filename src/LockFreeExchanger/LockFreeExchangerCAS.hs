@@ -2,7 +2,6 @@ module LockFreeExchanger.LockFreeExchangerCAS where
 
 import Data.IORef
 import System.Clock
-import Data.Time.Units
 import Common.AtomCAS
 import Common.State
 import Common.Exceptions

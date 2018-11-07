@@ -2,7 +2,6 @@ module EliminationArray.EliminationArrayCAS where
 
 import LockFreeExchanger.LockFreeExchangerCAS
 import System.Random
-import Data.Time.Units
 
 data EliminationArray a = EA {exchanger :: [LockFreeExchanger a], duration :: Integer}
 

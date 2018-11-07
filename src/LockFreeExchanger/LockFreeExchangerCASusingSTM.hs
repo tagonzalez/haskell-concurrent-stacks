@@ -2,7 +2,6 @@ module LockFreeExchanger.LockFreeExchangerCASusingSTM where
 
 import Data.IORef
 import System.Clock
-import Data.Time.Units
 import Common.AtomCASusingSTM
 import Common.State
 import Common.Exceptions

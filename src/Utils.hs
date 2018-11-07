@@ -27,3 +27,18 @@ timeIt msg action = do
   if msg == ""
     then print inSecs
     else putStrLn $ "[" ++ msg ++ "]" ++ ":" ++ " " ++ (show inSecs)
+
+data Counter = CNT {count:: TVar Int}
+
+newCounter:: IO Counter
+newCounter = atomically $ do
+  slot <- newTVar 0
+  return $ CNT slot
+
+incrCounter :: Counter -> IO ()
+incrCounter counter = atomically $ do
+  curr <- readTVar $ count counter
+  writeTVar (count counter) (curr + 1)
+
+getCounter :: Counter -> IO Int
+getCounter = atomically.readTVar.count

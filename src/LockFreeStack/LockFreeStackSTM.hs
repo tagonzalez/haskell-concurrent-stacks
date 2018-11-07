@@ -7,13 +7,12 @@ import Common.NodeSTM
 import Control.Exception
 import Common.Exceptions
 
-data LockFreeStack a = LFS { top :: TVar (Node a), backoffLFS :: Backoff }
+data LockFreeStack a = LFS { top :: TVar (Node a)}
 
-newLFS :: Int -> Int -> IO (LockFreeStack a)
-newLFS min max = do
-  bck <- newBackoff min max
+newLFS :: IO (LockFreeStack a)
+newLFS = do
   null <- atomically $ newTVar Null
-  return $ LFS null bck
+  return $ LFS null
 
 tryPush:: LockFreeStack a -> Node a -> STM ()
 tryPush lfs node = do

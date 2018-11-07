@@ -7,3 +7,12 @@ bin
 experiments
 *.gsheet
 test.hs
+
+# Latex
+*.log
+*.fls
+*.fdb_latexmk
+*.aux
+_minted-tesis
+*.toc
+tesis.pdf

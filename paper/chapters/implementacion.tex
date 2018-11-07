@@ -1,0 +1,113 @@
+\chapter{Implementación}
+
+\section{LockFreeStack}
+La estructura de datos LockFreeStack, también conocida como TreiberStack, consiste de una pila concurrente libre de locks que hace uso de la primitiva de sincronización de compare and set (CAS). La idea detrás de los algoritmos es que cada hilo de ejecución intenté realizar una operación de escritura o lectura sobre la pila. Si el hilo no es exitoso en el intento, debe volver a intentar luego de esperar una cantidad de tiempo determinada por una estructura de backoff.
+
+% Agregar algo de historia sobre cómo surgió la implementación con referencias al Shavit
+
+\subsection{Variantes de implementación: IO y STM}
+La estructura de datos LockFreeStack fue implementada en dos variantes. Dado que el método de sincronización de la estructura consiste en realizar una llamada a CAS, podemos considerar una implementación de CAS usando IORef y otra utilizando las primitivas de STM.
+
+\begin{figure}[h]
+\begin{minted}[fontsize=\footnotesize]{haskell}
+data LockFreeStack a = LFS { top :: IORef (Node a), backoffLFS :: Backoff }
+
+atomCAS :: Eq a => IORef a -> a -> a -> IO Bool
+atomCAS ptr old new =
+  atomicModifyIORef ptr (\ cur -> if cur == old
+                                  then (new, True)
+                                  else (cur, False))
+\end{minted}
+\caption{Estructura de LockFreeStack y atomCAS utilizando IORef}
+\end{figure}
+
+\begin{figure}[h]
+\begin{minted}[fontsize=\footnotesize]{haskell}
+data LockFreeStack a = LFS { top :: TVar (Node a), backoffLFS :: Backoff }
+
+atomCAS :: Eq a => TVar a -> a -> a -> IO Bool
+atomCAS ptr old new = atomically $ do
+  cur <- readTVar ptr
+  if cur == old
+  then do
+    writeTVar ptr new
+    return True
+  else return False
+\end{minted}
+\caption{Estructura de LockFreeStack y atomCAS utilizando STM}
+\end{figure}
+
+\clearpage
+\subsection{Intento de escritura o lectura}
+El comportamiento detrás del intento de escritura o lectura se define en las funciones tryPush y tryPop respectivamente. Ambas siguen la misma idea, observar el valor del tope de la pila y luego ejecutar CAS comparando lo que observa actualmente con lo observado en primer lugar. Si la comparación es exitosa, realizar la operación correspondiente (insertar un nuevo tope o remover el actual). Si no, realizar el backoff.
+
+En el caso particular en la que un hilo desee remover un objeto en la pila, se debe realizar una verificación que la pila no se encuentre vacía. Si no hay ningún objeto para remover, se produce una excepción en la ejecución.
+
+\begin{figure}[h]
+\begin{minted}[fontsize=\footnotesize]{haskell}
+tryPush :: Eq a => LockFreeStack a -> Node a -> IO Bool
+tryPush lfs node = do
+  oldTop <- readIORef (top lfs)
+  writeIORef (next node) oldTop
+  atomCAS (top lfs) oldTop node
+\end{minted}
+\caption{tryPush code}
+\end{figure}
+
+\begin{figure}[h]
+\begin{minted}[fontsize=\footnotesize]{haskell}
+tryPop :: Eq a => LockFreeStack a -> IO (Node a)
+tryPop lfs = do
+  oldTop <- readIORef (top lfs)
+  if oldTop == Null
+    then
+      throw EmptyException
+    else do
+      newTop <- readIORef (next oldTop)
+      b <- atomCAS (top lfs) oldTop newTop
+      if b
+        then return oldTop
+        else return Null
+\end{minted}
+\caption{tryPop code}
+\end{figure}
+
+\clearpage
+\subsection{Backoff}
+En la implementación utilizada, la estructura de backoff utilizada es del tipo de backoff exponencial. Al realizar la operación de backoff, la estructura toma un número aleatorio sobre un rango entre 0 y el límite establecido por parámetro y paraliza la ejecución del thread por esa cantidad de milisegundos. Luego la estructura duplica el valor del límite para la próxima vez que se realice la operación.
+\begin{figure}[h]
+\begin{minted}[fontsize=\footnotesize]{haskell}
+data Backoff = BCK {minDelay :: Int, maxDelay :: Int, limit :: IORef Int}
+newBackoff :: Int -> Int -> IO Backoff
+newBackoff min max = (newIORef min) >>= return.(BCK min max)
+
+-- Shavit: Thread.sleep(millis) takes amount of milliseconds to sleep as an argument
+-- threadDelay takes amount of microseconds to sleep as argument
+-- 1 millisecond = 1000 microseconds
+backoff :: Backoff -> IO ()
+backoff b = do
+  backoffLimit <- readIORef $ limit b
+  delayInMilliseconds <- randomRIO (0, backoffLimit)
+  writeIORef (limit b) (min (maxDelay b) (2 * backoffLimit))
+  threadDelay (toMicroseconds delayInMilliseconds)
+    where toMicroseconds = (*) 1000
+\end{minted}
+\caption{Estructura de backoff}
+\end{figure}
+
+\clearpage
+\section{EliminationBackoffStack}
+
+Un EliminationBackoffStack (EBS) es una extensión para un LockFreeStack cuya idea principal es aprovechar el tiempo previo a un reintento (backoff) para intentar realizar un intercambio (exchange) con otro hilo que esté también esperando, pero para realizar la operación opuesta. Es decir, un hilo lector intentará hacer un intercambio con un hilo escritor y vice versa.
+
+Para lograr este objetivo, se necesita de dos estructuras de datos alternativas: un LockFreeExchanger y un EliminationArray.
+
+% Agregar algo de historia sobre cómo surgió la implementación con referencias al Shavit
+
+\subsection{LockFreeExchanger}
+\subsection{EliminationArray}
+\subsection{Estrategia de backoff del EliminationBackoffStack}
+\subsection{Variantes de implementación: IO y STM}
+
+\clearpage
+\section{StackSTM}

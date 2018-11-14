@@ -1,15 +1,15 @@
 \chapter{Implementación}
 
 \section{LockFreeStack}
-La estructura de datos LockFreeStack, también conocida como TreiberStack, consiste de una pila concurrente libre de locks que hace uso de la primitiva de sincronización de compare and set (CAS). La idea detrás de los algoritmos es que cada hilo de ejecución intenté realizar una operación de escritura o lectura sobre la pila. Si el hilo no es exitoso en el intento, debe volver a intentar luego de esperar una cantidad de tiempo determinada por una estructura de backoff.
+La estructura de datos \mintinline{haskell}{LockFreeStack}, también conocida como TreiberStack, consiste de una pila concurrente libre de locks que hace uso de la primitiva de sincronización de compare and set (CAS). La idea detrás de los algoritmos es que cada hilo de ejecución intenté realizar una operación de escritura o lectura sobre la pila. Si el hilo no es exitoso en el intento, debe volver a intentar luego de esperar una cantidad de tiempo determinada por una estructura de backoff.
 
 % Agregar algo de historia sobre cómo surgió la implementación con referencias al Shavit
 
 \subsection{Variantes de implementación: IO y STM}
 La estructura de datos LockFreeStack fue implementada en dos variantes. Dado que el método de sincronización de la estructura consiste en realizar una llamada a CAS, podemos considerar una implementación de CAS usando IORef y otra utilizando las primitivas de STM.
 
-\begin{figure}[h]
-\begin{minted}[fontsize=\footnotesize]{haskell}
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
 data LockFreeStack a = LFS { top :: IORef (Node a), backoffLFS :: Backoff }
 
 atomCAS :: Eq a => IORef a -> a -> a -> IO Bool
@@ -21,8 +21,8 @@ atomCAS ptr old new =
 \caption{Estructura de LockFreeStack y atomCAS utilizando IORef}
 \end{figure}
 
-\begin{figure}[h]
-\begin{minted}[fontsize=\footnotesize]{haskell}
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
 data LockFreeStack a = LFS { top :: TVar (Node a), backoffLFS :: Backoff }
 
 atomCAS :: Eq a => TVar a -> a -> a -> IO Bool
@@ -43,8 +43,8 @@ El comportamiento detrás del intento de escritura o lectura se define en las fu
 
 En el caso particular en la que un hilo desee remover un objeto en la pila, se debe realizar una verificación que la pila no se encuentre vacía. Si no hay ningún objeto para remover, se produce una excepción en la ejecución.
 
-\begin{figure}[h]
-\begin{minted}[fontsize=\footnotesize]{haskell}
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
 tryPush :: Eq a => LockFreeStack a -> Node a -> IO Bool
 tryPush lfs node = do
   oldTop <- readIORef (top lfs)
@@ -54,8 +54,8 @@ tryPush lfs node = do
 \caption{tryPush code}
 \end{figure}
 
-\begin{figure}[h]
-\begin{minted}[fontsize=\footnotesize]{haskell}
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
 tryPop :: Eq a => LockFreeStack a -> IO (Node a)
 tryPop lfs = do
   oldTop <- readIORef (top lfs)
@@ -75,8 +75,8 @@ tryPop lfs = do
 \clearpage
 \subsection{Backoff}
 En la implementación utilizada, la estructura de backoff utilizada es del tipo de backoff exponencial. Al realizar la operación de backoff, la estructura toma un número aleatorio sobre un rango entre 0 y el límite establecido por parámetro y paraliza la ejecución del thread por esa cantidad de milisegundos. Luego la estructura duplica el valor del límite para la próxima vez que se realice la operación.
-\begin{figure}[h]
-\begin{minted}[fontsize=\footnotesize]{haskell}
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
 data Backoff = BCK {minDelay :: Int, maxDelay :: Int, limit :: IORef Int}
 newBackoff :: Int -> Int -> IO Backoff
 newBackoff min max = (newIORef min) >>= return.(BCK min max)
@@ -98,16 +98,121 @@ backoff b = do
 \clearpage
 \section{EliminationBackoffStack}
 
-Un EliminationBackoffStack (EBS) es una extensión para un LockFreeStack cuya idea principal es aprovechar el tiempo previo a un reintento (backoff) para intentar realizar un intercambio (exchange) con otro hilo que esté también esperando, pero para realizar la operación opuesta. Es decir, un hilo lector intentará hacer un intercambio con un hilo escritor y vice versa.
+Un \mintinline{haskell}{EliminationBackoffStack} es una extensión para un LockFreeStack cuya idea principal es aprovechar el tiempo previo a un reintento para intentar realizar un intercambio con otro hilo que esté también esperando, pero para realizar la operación opuesta. Es decir, un hilo lector intentará hacer un intercambio con un hilo escritor y vice versa.
 
-Para lograr este objetivo, se necesita de dos estructuras de datos alternativas: un LockFreeExchanger y un EliminationArray.
+Para lograr este objetivo, se necesita de dos estructuras de datos alternativas: un \mintinline{haskell}{LockFreeExchanger} y un \mintinline{haskell}{EliminationArray}.
 
 % Agregar algo de historia sobre cómo surgió la implementación con referencias al Shavit
 
 \subsection{LockFreeExchanger}
+La estructura de datos \mintinline{haskell}{LockFreeExchanger} (LFE) consiste de una referencia que guarda información de estado y un valor asociado. El estado puede tomar 4 posibles valores:
+
+\begin{itemize}
+\item{\mintinline{haskell}{EMPTY}: no hay ningún valor asociado a la referencia}
+\item{\mintinline{haskell}{WAITING}: un hilo ha escrito un valor en la referencia y está esperando a que un hilo lo lea}
+\item{\mintinline{haskell}{BUSY}: un hilo a leído el valor que se encuentra en la referencia y escribe un valor para intercambiar}
+\end{itemize}
+
+La única función que realiza esta estructura de datos es la operación \mintinline{haskell}{exchange}. El método consiste en leer el estado del LFE y realizar la operación correspondiente al estado. La operación debe ocurrir dentro de una ventana de tiempo que es establecida mediante un parámetro \mintinline{haskell}{timeout} al ejecutar la función.
+
+\begin{itemize}
+\item{\mintinline{haskell}{EMPTY}: el hilo actual escribe el valor y el estado pasa a WATING. Luego espera a que el estado pase a BUSY, lo cual señala que otro hilo ha leído el valor y ha escrito su propio valor para el intercambio. Si el estado pasa a BUSY antes de que se cumpla el timeout, el hilo actual lee el valor escrito por el otro y termina la ejecución de la función.}
+\item{\mintinline{haskell}{WAITING}: el hilo actual lee el valor escrito y escribe el suyo, luego termina la ejecución de la función.}
+\item{\mintinline{haskell}{BUSY}: en este caso, ya hay dos hilos realizando un intercambio. Por lo tanto, el hilo actual debe reintentar de realizar un intercambio.}
+\end{itemize}
+
 \subsection{EliminationArray}
+Un \mintinline{haskell}{EliminationArray} es una simple estructura de datos que mantiene un arreglo de instancias de \mintinline{haskell}{LockFreeExchanger} y la información pertinente a la duración del \mintinline{haskell}{timeout} que deberá cumplir cada una de las llamadas a \mintinline{haskell}{exchange} que se realicen.
+La estructura tiene sólo una función \mintinline{haskell}{visit} que elige aleatoriamente cual de los exchangers de su arreglo utilizar para realizar el intercambio. Luego ejecuta la función \mintinline{haskell}{visit} para el exchanger elegido.
+
 \subsection{Estrategia de backoff del EliminationBackoffStack}
+La estructura \mintinline{haskell}{EliminationBackoffStack} (EBS) tiene un comportamiento muy similar a un \mintinline{haskell}{LockFreeStack}. La diferencia se encuentra en las acciones que cada estructura realiza cuando la operación inicial falla, y por lo tanto debe esperar antes de reintentar. En el caso del LFS, el hilo debe esperar un tiempo sin realizar ninguna acción y reintenta, mientras que en un EBS este intenta aprovechar el tiempo de espera para realizar un intercambio con otro hilo que haya fallado su intento.
+
+Para poder optimizar las probabilidades de lograr un intercambio en ese tiempo de espera. Un EBS cuenta con otra estructura adicional conocida como \mintinline{haskell}{RangePolicy}. Esta estructura tiene como función manejar el rango del \mintinline{haskell}{EliminationArray} en el cual se eligirá el exchanger a utilizar.
+La idea general del funcionamiento es que con cada intento de intercambio el rango puede ampliarse si el intercambio es exitoso, y reducirse en el caso de que el intercambio fracase.
+Al reducir el rango aumenta la probabilidad de que dos hilos elijan la misma posición del arreglo para realizar el intercambio, y al incrementar el rango se puede permitir que más intercambios sucedan al mismo tiempo si es que hay suficientes hilos como para cubrir las posiciones del arreglo.
+
+Luego, en las funciones \mintinline{haskell}{pushEBS} y \mintinline{haskell}{popEBS}, se intenta realizar la operación con las mismas funciones que utiliza un LFE, \mintinline{haskell}{tryPush} y \mintinline{haskell}{tryPop} respectivamente, y en el caso de que haya una falla, se obtiene el rango dictado por el \mintinline{haskell}{RangePolicy} y se llama a la función \mintinline{haskell}{visit} del EBS con el rango pasado como argumento.
+
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
+pushEBS :: Eq a => EliminationBackoffStack a -> a -> IO ()
+pushEBS ebs value = do
+  ret <- newIORef True
+  rangePolicy <- getTLS (policy ebs)
+
+  range <- getRange rangePolicy
+  node <- newNode value
+  whileM_ (readIORef ret) $ do
+    b <- tryPush ebs node
+    if b
+      then writeIORef ret False
+      else (catch (tryExchangePush ebs node value range ret rangePolicy) $ \( e :: TimeoutException) -> do
+          recordEliminationTimeout rangePolicy)
+
+  where tryExchangePush ebs node value range ret rangePolicy = do
+          otherValue <- visit (eliminationArray ebs) (Just value) range
+          if otherValue == Nothing
+            then do
+              recordEliminationSuccess rangePolicy
+              writeIORef ret False
+            else return ()
+\end{minted}
+\caption{Ejemplo de \mintinline{haskell}{pushEBS}}
+\end{figure}
+
+\clearpage
 \subsection{Variantes de implementación: IO y STM}
+Al igual que sucede con la estructura \mintinline{haskell}{LockFreeStack}, hay dos variantes implementadas para \mintinline{haskell}{EliminationBackoffStack}, una utilizando la primitiva de sincronización \mintinline{haskell}{atomCAS} implementada sobre \mintinline{haskell}{IO} y la otra utilizando \mintinline{haskell}{STM} para la implementación.
+Dado que la llamada a \mintinline{haskell}{atomCAS} ocurre en la función \mintinline{haskell}{exchange} del módulo de \mintinline{haskell}{LockFreeExchanger}, las tres estructuras tienen estas dos sus variantes de implementación: \mintinline{haskell}{EliminationBackoffStack}, \mintinline{haskell}{EliminationArray}, y \mintinline{haskell}{LockFreeExchanger}.
+
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
+-- Implementación IO
+data EliminationBackoffStack a = EBS { top :: IORef (Node a), capacity :: Int, eliminationArray :: EliminationArray a, policy :: TLS RangePolicy}
+
+data EliminationArray a = EA {exchanger :: [LockFreeExchanger a], duration :: Integer}
+
+data LockFreeExchanger a = LFE {slot :: IORef (Maybe a, State)}
+
+--Implementación STM
+data EliminationBackoffStack a =EBS {top :: TVar (Node a), capacity :: Int, eliminationArray :: EliminationArray a, policy :: TLS RangePolicy}
+
+data EliminationArray a = EA {exchanger :: [LockFreeExchanger a], duration :: Integer}
+
+data LockFreeExchanger a = LFE {slot :: TVar (Maybe a, State)}
+\end{minted}
+\caption{Variantes de implementación para las estructuras del EBS}
+\end{figure}
 
 \clearpage
 \section{StackSTM}
+La última estructura de datos implementada es \mintinline{haskell}{StackSTM}. La implementación para esta estructura intenta aprovechar lo más posible las herramientas que provee la librería \mintinline{haskell}{STM} de Haskell.
+
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
+data StackSTM a = ST {top :: TVar (Node a)}
+
+newStackSTM :: IO (StackSTM a)
+newStackSTM = atomically (newTVar Null) >>= return.ST
+
+pushStackSTM:: StackSTM a -> a -> IO ()
+pushStackSTM st value = do
+  node <- newNode value
+  atomically $ do
+    oldTop <- readTVar $ top st
+    writeTVar (next node) oldTop
+    writeTVar (top st) node
+
+popStackSTM:: Show a => StackSTM a -> IO a
+popStackSTM st = atomically $ do
+    resNode <- readTVar $ top st
+    case resNode of
+      Nd v nxt -> do
+        newTop <- readTVar nxt
+        writeTVar (top st) newTop
+        return v
+      Null -> throw EmptyException   
+\end{minted}
+\caption{Implementación completa de \mintinline{haskell}{StackSTM}}
+\end{figure}

@@ -5,4 +5,4 @@ all: tesis.pdf
 .PHONY: clean
 
 clean:
-	rm -rf ./**/*.aux _minted-tesis ./**/*.toc ./**/*.log ./**/*.fdb_latexmk ./**/*.cls ./**/*.fls *.aux *.cls *.log *.toc
+	rm -rf ./**/*.aux _minted-tesis ./**/*.toc ./**/*.log ./**/*.fdb_latexmk ./**/*.fls *.aux *.log *.toc

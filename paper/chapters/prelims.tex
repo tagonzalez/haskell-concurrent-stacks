@@ -1,0 +1,29 @@
+\section{Variantes de implementación: IO y STM}
+Las estructuras \mintinline{haskell}{LockFreeStack} y \mintinline{haskell}{EliminationBackoffStack} son implementaciones de una pila concurrente libre de locks que utilizan la primitiva de sincronización \emph{compareAndSet} (CAS). Ambas tienen dos variantes de implementación: una que implementa CAS sobre IO y la otra sobre STM.
+
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
+atomCAS :: Eq a => IORef a -> a -> a -> IO Bool
+atomCAS ptr old new =
+  atomicModifyIORef ptr (\ cur -> if cur == old
+                                  then (new, True)
+                                  else (cur, False))
+\end{minted}
+\caption{\mintinline{haskell}{atomCAS} utilizando IORef}
+\end{figure}
+
+\begin{figure}[H]
+\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
+atomCAS :: Eq a => TVar a -> a -> a -> IO Bool
+atomCAS ptr old new = atomically $ do
+  cur <- readTVar ptr
+  if cur == old
+  then do
+    writeTVar ptr new
+    return True
+  else return False
+\end{minted}
+\caption{\mintinline{haskell}{atomCAS} utilizando STM}
+\end{figure}
+
+Este código es idéntico al que se encuentra presentado en \hl{referencia al paper de linked list}

@@ -1,21 +1,29 @@
-all: LockFreeStackCAS.spec LockFreeExchangerCAS.spec LockFreeExchangerCASusingSTM.spec LockFreeStackCASusingSTM.spec EliminationBackoffStackCAS.spec EliminationBackoffStackCASusingSTM.spec
+all: LockFreeStackIO.spec LockFreeExchangerIO.spec LockFreeExchangerSTM.spec LockFreeStackSTM.spec EliminationBackoffStackIO.spec EliminationBackoffStackSTM.spec StackSTM.spec
 
 FLAGS = -O2 -threaded -rtsopts -i../src/
 
-LockFreeStackCAS.spec: LockFreeStack/LockFreeStackCAS.spec.hs
-	ghc $(FLAGS) LockFreeStack/LockFreeStackCAS.spec.hs -o bin/LockFreeStackCASTest
+LockFreeStackIO.spec: LockFreeStack/LockFreeStackIO.spec.hs
+	ghc $(FLAGS) LockFreeStack/LockFreeStackIO.spec.hs -o bin/LockFreeStackIOTest
 
-LockFreeStackCASusingSTM.spec: LockFreeStack/LockFreeStackCAS.spec.hs
-	ghc $(FLAGS) LockFreeStack/LockFreeStackCASusingSTM.spec.hs -o bin/LockFreeStackCASusingSTMTest
+LockFreeStackSTM.spec: LockFreeStack/LockFreeStackIO.spec.hs
+	ghc $(FLAGS) LockFreeStack/LockFreeStackSTM.spec.hs -o bin/LockFreeStackSTMTest
 
-LockFreeExchangerCAS.spec: LockFreeExchanger/LockFreeExchangerCAS.spec.hs
-	ghc $(FLAGS) LockFreeExchanger/LockFreeExchangerCAS.spec.hs -o bin/LockFreeExchangerCASTest
+LockFreeExchangerIO.spec: LockFreeExchanger/LockFreeExchangerIO.spec.hs
+	ghc $(FLAGS) LockFreeExchanger/LockFreeExchangerIO.spec.hs -o bin/LockFreeExchangerCASTest
 
-LockFreeExchangerCASusingSTM.spec: LockFreeExchanger/LockFreeExchangerCASusingSTM.spec.hs
-	ghc $(FLAGS) LockFreeExchanger/LockFreeExchangerCASusingSTM.spec.hs -o bin/LockFreeExchangerCASusingSTMTest
+LockFreeExchangerSTM.spec: LockFreeExchanger/LockFreeExchangerSTM.spec.hs
+	ghc $(FLAGS) LockFreeExchanger/LockFreeExchangerSTM.spec.hs -o bin/LockFreeExchangerSTMTest
 
-EliminationBackoffStackCAS.spec: EliminationBackoffStack/EliminationBackoffStackCAS.spec.hs
-	ghc $(FLAGS) EliminationBackoffStack/EliminationBackoffStackCAS.spec.hs -o bin/EliminationBackoffStackCASTest
+EliminationBackoffStackIO.spec: EliminationBackoffStack/EliminationBackoffStackIO.spec.hs
+	ghc $(FLAGS) EliminationBackoffStack/EliminationBackoffStackIO.spec.hs -o bin/EliminationBackoffStackIOTest
 
-EliminationBackoffStackCASusingSTM.spec: EliminationBackoffStack/EliminationBackoffStackCASusingSTM.spec.hs
-	ghc $(FLAGS) EliminationBackoffStack/EliminationBackoffStackCASusingSTM.spec.hs -o bin/EliminationBackoffStackCASusingSTMTest
+EliminationBackoffStackSTM.spec: EliminationBackoffStack/EliminationBackoffStackSTM.spec.hs
+	ghc $(FLAGS) EliminationBackoffStack/EliminationBackoffStackSTM.spec.hs -o bin/EliminationBackoffStackSTMTest
+
+StackSTM.spec: StackSTM/StackSTM.spec.hs
+	ghc $(FLAGS) StackSTM/StackSTM.spec.hs -o bin/StackSTMTest
+
+.PHONY: clean
+
+clean:
+	rm -f bin/* ./**/*.hi

@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-} -- Necessary for handling exceptions
 module Main where
 
-import LockFreeExchanger.LockFreeExchangerCASusingSTM
+import LockFreeExchanger.LockFreeExchangerSTM
 import Control.Concurrent.STM
 import Control.Concurrent.Async
 import Control.Monad
@@ -15,7 +15,7 @@ import Control.Exception
 import Common.Exceptions
 
 exchangeTest = do
-    lfe <- newLockFreeExchanger
+    lfe <- newLockFreeExchangerSTM
     tid1 <- async (thread1 lfe)
     tid2 <- async (thread2 lfe)
     res <- mapM wait [tid1, tid2]
@@ -24,19 +24,19 @@ exchangeTest = do
 
     where thread1 lfe = do
             myTid <- myThreadId
-            res <- exchange lfe (Just (3 :: Int)) 10000
+            res <- exchangeSTM lfe (Just (3 :: Int)) 10000
             return $ fromJust res
 
           thread2 lfe = do
             myTid <- myThreadId
-            res <- exchange lfe (Just (2 :: Int)) 10000
+            res <- exchangeSTM lfe (Just (2 :: Int)) 10000
             return $ fromJust res
 
 timeoutTest = do
-    lfe <- newLockFreeExchanger
+    lfe <- newLockFreeExchangerSTM
     randTimeout <- randomRIO (100,1000) :: IO Integer
     timeBefore <- (getTime Realtime) >>= return.toNanoSecs
-    res <- catch (exchange lfe (Just (4 :: Int)) randTimeout) (\(e::TimeoutException)-> return $ Just 50)
+    res <- catch (exchangeSTM lfe (Just (4 :: Int)) randTimeout) (\(e::TimeoutException)-> return $ Just 50)
     timeAfter <- (getTime Realtime) >>= return.toNanoSecs
     let execTimeInMillis = quot (timeAfter - timeBefore) (10 ^ 6)
     True @=? execTimeInMillis >= (randTimeout)

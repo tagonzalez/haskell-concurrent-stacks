@@ -1,55 +1,66 @@
 module LockFreeStack.LockFreeStackSTM where
 
 import Data.IORef
-import Control.Concurrent.STM
+import Control.Monad.STM
+import Control.Concurrent.STM.TVar
 import Common.Backoff
+import Common.AtomCASSTM
 import Common.NodeSTM
 import Control.Exception
 import Common.Exceptions
+import Control.Monad.Loops
+import Data.Maybe
 
-data LockFreeStack a = LFS { top :: TVar (Node a)}
+data LockFreeStackSTM a = LFS { top :: TVar (NodeSTM a), backoffLFS :: Backoff }
 
-newLFS :: IO (LockFreeStack a)
-newLFS = do
-  null <- atomically $ newTVar Null
-  return $ LFS null
+newLFSSTM :: Int -> Int -> IO (LockFreeStackSTM a)
+newLFSSTM min max = do
+  bck <- newBackoff min max
+  nullRef <- atomically $ newTVar Null
+  return $ LFS nullRef bck
 
-tryPush:: LockFreeStack a -> Node a -> STM ()
-tryPush lfs node = do
-  oldTop <- readTVar $ top lfs
-  writeTVar (next node) oldTop
-  writeTVar (top lfs) node
+tryPushSTM :: Eq a => LockFreeStackSTM a -> NodeSTM a -> IO Bool
+tryPushSTM lfs node = do
+  oldTop <- atomically $ readTVar (top lfs)
+  atomically $ writeTVar (next node) oldTop
+  atomCASSTM (top lfs) oldTop node
 
-pushLFS:: LockFreeStack a -> a -> IO ()
-pushLFS lfs value = do
-  node <- newNode value
-  atomically $ tryPush lfs node
+pushLFSSTM :: Eq a => LockFreeStackSTM a -> a -> IO ()
+pushLFSSTM lfs value = do
+  ret <- newIORef True
 
-tryPop:: Show a => LockFreeStack a -> STM a
-tryPop lfs = do
-  resNode <- readTVar $ top lfs
-  case resNode of
-    Nd v nxt -> do
-      newTop <- readTVar nxt
-      writeTVar (top lfs) newTop
-      return v
-    Null -> throw EmptyException
+  node <- newNodeSTM value
+  whileM_ (readIORef ret) $ do
+    b <- tryPushSTM lfs node
+    if b
+      then writeIORef ret False
+      else backoff $ backoffLFS lfs
 
-popLFS:: Show a => LockFreeStack a -> IO a
-popLFS lfs = atomically $ tryPop lfs
+tryPopSTM :: Eq a => LockFreeStackSTM a -> IO (NodeSTM a)
+tryPopSTM lfs = do
+  oldTop <- atomically $ readTVar (top lfs)
+  if oldTop == Null
+    then
+      throw EmptyException
+    else do
+      newTop <- atomically $ readTVar (next oldTop)
+      b <- atomCASSTM (top lfs) oldTop newTop
+      if b
+        then return oldTop
+        else return Null
 
+popLFSSTM :: Eq a => LockFreeStackSTM a -> IO a
+popLFSSTM lfs = do
+  ret <- newIORef True
+  res <- newIORef Nothing
 
--- Testing
-lfsNodesToListIO :: Show a => Node a -> IO [a]
-lfsNodesToListIO node =
-  case node of
-    Nd v nxt -> do
-      nextNode <- atomically $ readTVar nxt
-      acc <- lfsNodesToListIO nextNode
-      return $ v:acc
-    Null -> return []
+  whileM_ (readIORef ret) $ do
+    returnNodeSTM <- tryPopSTM lfs
+    if returnNodeSTM /= Null
+      then do
+        writeIORef res $ Just (val returnNodeSTM)
+        writeIORef ret False
+      else backoff (backoffLFS lfs)
 
-lfsToListIO :: Show a => LockFreeStack a -> IO [a]
-lfsToListIO lfs = do
-  topNode <- atomically $ readTVar (top lfs)
-  lfsNodesToListIO topNode
+  readIORef res >>= return.fromJust
+

@@ -1,27 +1,28 @@
-module LockFreeExchanger.LockFreeExchangerCASusingSTM where
+module LockFreeExchanger.LockFreeExchangerIO where
 
 import Data.IORef
 import System.Clock
-import Common.AtomCASusingSTM
+import Common.AtomCASIO
 import Common.State
 import Common.Exceptions
 import Control.Exception
 import Control.Monad.Loops
-import Control.Concurrent.STM
+import Control.Concurrent
 
-data LockFreeExchanger a = LFE {slot :: TVar (Maybe a, State)}
+data LockFreeExchangerIO a = LFE {slot :: IORef (Maybe a, State)}
 
-getSlot :: TVar (Maybe a, State) -> IORef State -> IO (Maybe a)
-getSlot slot stampHolder = do
-  (val, state) <- atomically $ readTVar slot
+newLockFreeExchangerIO :: IO (LockFreeExchangerIO a)
+newLockFreeExchangerIO = (newIORef (Nothing, EMPTY)) >>= return.LFE
+
+getSlotIO :: IORef (Maybe a, State) -> IORef State -> IO (Maybe a)
+getSlotIO slot stampHolder = do
+  (val, state) <- readIORef slot
   writeIORef stampHolder state
   return val
 
-newLockFreeExchanger :: IO (LockFreeExchanger a)
-newLockFreeExchanger = (atomically $ newTVar (Nothing,EMPTY)) >>= return.LFE
 
-exchange :: (Eq a) => LockFreeExchanger a -> Maybe a -> Integer -> IO (Maybe a)
-exchange lfe myItem timeout = do
+exchangeIO :: (Eq a) => LockFreeExchangerIO a -> Maybe a -> Integer -> IO (Maybe a)
+exchangeIO lfe myItem timeout = do
   ret <- newIORef True
   res <- newIORef Nothing
   let nanos = timeout * (10 ^ 6) -- timeout unit is millisecs
@@ -33,19 +34,19 @@ exchange lfe myItem timeout = do
       then do
         throw TimeoutException
       else do
-        yrItem <- getSlot (slot lfe) stampHolder
+        yrItem <- getSlotIO (slot lfe) stampHolder
         stamp <- readIORef stampHolder
         case stamp of
           EMPTY -> do
-            b <- atomCAS (slot lfe) (yrItem, EMPTY) (myItem, WAITING)
+            b <- atomCASIO (slot lfe) (yrItem, EMPTY) (myItem, WAITING)
             if b
               then do
                 whileM_ (emptyCaseLoopCondition ret timeBound) $ do
-                  yrItem <- getSlot (slot lfe) stampHolder
+                  yrItem <- getSlotIO (slot lfe) stampHolder
                   stampBusy <- (readIORef stampHolder) >>= return.((==) BUSY)
                   if stampBusy
                     then do
-                      atomically $ writeTVar (slot lfe) (Nothing, EMPTY)
+                      writeIORef (slot lfe) (Nothing, EMPTY)
                       writeIORef ret False
                       writeIORef res yrItem
                     else
@@ -54,18 +55,18 @@ exchange lfe myItem timeout = do
                 if breakFromWhile
                   then return ()
                   else do
-                    b <- atomCAS (slot lfe) (myItem, WAITING) (Nothing, EMPTY)
+                    b <- atomCASIO (slot lfe) (myItem, WAITING) (Nothing, EMPTY)
                     if b
                       then do
                         throw TimeoutException
                       else do
-                        yrItem <- getSlot (slot lfe) stampHolder
-                        atomically $ writeTVar (slot lfe) (Nothing, EMPTY)
+                        yrItem <- getSlotIO (slot lfe) stampHolder
+                        writeIORef (slot lfe) (Nothing, EMPTY)
                         writeIORef res yrItem
               else do
                 return ()
           WAITING -> do
-            b <- atomCAS (slot lfe) (yrItem, WAITING) (myItem, BUSY)
+            b <- atomCASIO (slot lfe) (yrItem, WAITING) (myItem, BUSY)
             if b
               then do
                 writeIORef ret False

@@ -1,6 +1,6 @@
 module Utils where
 
-import Common.Node
+import Common.NodeIO
 import Data.IORef
 import System.Clock
 import Control.Monad.STM

@@ -1,8 +1,8 @@
-module Common.AtomCASusingSTM where
+module Common.AtomCASSTM where
 import Control.Concurrent.STM
 
-atomCAS :: Eq a => TVar a -> a -> a -> IO Bool
-atomCAS ptr old new = atomically $ do
+atomCASSTM :: Eq a => TVar a -> a -> a -> IO Bool
+atomCASSTM ptr old new = atomically $ do
   cur <- readTVar ptr
   if cur == old
   then do

@@ -1,10 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-} -- Necessary for handling exceptions
-module EliminationBackoffStack.EliminationBackoffStackCAS where
+module EliminationBackoffStack.EliminationBackoffStackIO where
 
-import EliminationArray.EliminationArrayCAS
+import EliminationArray.EliminationArrayIO
 import Common.RangePolicy
-import Common.Node
-import Common.AtomCAS
+import Common.NodeIO
+import Common.AtomCASIO
 import Control.Exception
 import Common.Exceptions
 import Data.IORef
@@ -14,66 +14,66 @@ import Utils
 import Common.Backoff
 import Data.TLS.GHC
 
-data EliminationBackoffStack a = EBS {top :: IORef (Node a), capacity :: Int, eliminationArray :: EliminationArray a, policy :: TLS RangePolicy}
+data EliminationBackoffStackIO a = EBS {top :: IORef (NodeIO a), capacity :: Int, eliminationArray :: EliminationArrayIO a, policy :: TLS RangePolicy}
 
-newEBS :: Int -> Integer ->  IO (EliminationBackoffStack a)
-newEBS capacity duration = do
+newEBSIO :: Int -> Integer ->  IO (EliminationBackoffStackIO a)
+newEBSIO capacity duration = do
   nullRef <- newIORef Null
   let maxRange = capacity - 1 -- Last accessible position within the elimination array (0-based index)
   rgPcy <- mkTLS $ newRangePolicy maxRange -- range policy must be thread local according to Shavit
-  elArr <- newEliminationArray capacity duration
+  elArr <- newEliminationArrayIO capacity duration
   return $ EBS nullRef capacity elArr rgPcy
 
-tryPush :: Eq a => EliminationBackoffStack a -> Node a -> IO Bool
-tryPush ebs node = do
+tryPushIO :: Eq a => EliminationBackoffStackIO a -> NodeIO a -> IO Bool
+tryPushIO ebs node = do
   oldTop <- readIORef (top ebs)
   writeIORef (next node) oldTop
-  atomCAS (top ebs) oldTop node
+  atomCASIO (top ebs) oldTop node
 
-pushEBS :: Eq a => EliminationBackoffStack a -> a -> IO ()
-pushEBS ebs value = do
+pushEBSIO :: Eq a => EliminationBackoffStackIO a -> a -> IO ()
+pushEBSIO ebs value = do
   ret <- newIORef True
   rangePolicy <- getTLS (policy ebs)
 
   range <- getRange rangePolicy
-  node <- newNode value
+  node <- newNodeIO value
   whileM_ (readIORef ret) $ do
-    b <- tryPush ebs node
+    b <- tryPushIO ebs node
     if b
       then writeIORef ret False
       else (catch (tryExchangePush ebs node value range ret rangePolicy) $ \( e :: TimeoutException) -> do
           recordEliminationTimeout rangePolicy)
 
   where tryExchangePush ebs node value range ret rangePolicy = do
-          otherValue <- visit (eliminationArray ebs) (Just value) range
+          otherValue <- visitIO (eliminationArray ebs) (Just value) range
           if otherValue == Nothing
             then do
               recordEliminationSuccess rangePolicy
               writeIORef ret False
             else return ()
 
-tryPop :: Eq a => EliminationBackoffStack a -> IO (Node a)
-tryPop ebs = do
+tryPopIO :: Eq a => EliminationBackoffStackIO a -> IO (NodeIO a)
+tryPopIO ebs = do
   oldTop <- readIORef (top ebs)
   if oldTop == Null
     then
       throw EmptyException
     else do
       newTop <- readIORef (next oldTop)
-      b <- atomCAS (top ebs) oldTop newTop
+      b <- atomCASIO (top ebs) oldTop newTop
       if b
         then return oldTop
         else return Null
 
-popEBS :: Eq a => EliminationBackoffStack a -> IO a
-popEBS ebs = do
+popEBSIO :: Eq a => EliminationBackoffStackIO a -> IO a
+popEBSIO ebs = do
   res <- newIORef Nothing
   ret <- newIORef True
   rangePolicy <- getTLS (policy ebs)
 
   range <- getRange rangePolicy
   whileM_ (readIORef ret) $ do
-    returnNode <- tryPop ebs
+    returnNode <- tryPopIO ebs
     if returnNode /= Null
       then do
         writeIORef res $ Just (val returnNode)
@@ -83,7 +83,7 @@ popEBS ebs = do
   readIORef res >>= return.fromJust
 
   where exchangePop ebs range ret res rangePolicy = do
-          otherValue <- visit (eliminationArray ebs) Nothing range
+          otherValue <- visitIO (eliminationArray ebs) Nothing range
           case otherValue of
             Just v -> do
               recordEliminationSuccess rangePolicy

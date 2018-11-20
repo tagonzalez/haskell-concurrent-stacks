@@ -1,28 +1,30 @@
 {-# LANGUAGE ScopedTypeVariables #-} -- Necessary for handling exceptions
 module Main where
 
-import LockFreeStack.LockFreeStackCAS
-import Common.Node
+import StackSTM.StackSTM
+
+import Common.NodeIO
 import System.Random
 import Data.IORef
 import Test.HUnit
 import Control.Concurrent.Async
 import Control.Concurrent
+import Control.Concurrent.STM
 import Control.Exception
 import Common.Exceptions
-import Utils
+import UtilsSTM
 
-pushThreadAction lfs iterations = do
+pushThreadAction stack iterations = do
   if iterations > 0
     then do
       elem <- randomIO :: IO Int
-      pushLFS lfs elem
+      pushStackSTM stack elem
     else return ()
 
-popThreadAction lfs iterations = do
+popThreadAction stack iterations = do
   if iterations > 0
     then do
-      _ <- popLFS lfs
+      _ <- popStackSTM stack
       return ()
     else return ()
 
@@ -31,7 +33,7 @@ callPushes stack iterations = do
     if iterations > 0
         then do
             e <- randomIO :: IO Int
-            pushLFS stack e
+            pushStackSTM stack e
             callPushes stack (iterations - 1)
         else do
             return ()
@@ -40,7 +42,7 @@ callPops stack iterations = do
     mytid <- myThreadId
     if iterations > 0
         then do
-            _ <- catch (popLFS stack) (\(e :: EmptyException) -> do
+            _ <- catch (popStackSTM stack) (\(e :: EmptyException) -> do
               putStrLn "Exception!"
               return 1)
             callPops stack (iterations - 1)
@@ -58,59 +60,59 @@ createThreads stack threadCount pushThreadCount iterations tids = do
         else
             mapM_ wait tids
 
-lfsFromList xs = do
-  lfs <- newLFS 100 100
-  pushListElems lfs (reverse xs)
-  return lfs
-  where pushListElems lfs list =
+stackFromList xs = do
+  stack <- newStackSTM
+  pushListElems stack (reverse xs)
+  return stack
+  where pushListElems stack list =
           case list of
             [] -> return ()
             (x:xs) -> do
-              pushLFS lfs x
-              pushListElems lfs xs
+              pushStackSTM stack x
+              pushListElems stack xs
 
 -- Tests
-listToLFSAndBackTest = do
-  lfs <- lfsFromList [1,2,3,4,5]
-  list <- readIORef (top lfs) >>= nodesToListIO
+listToStackAndBackTest = do
+  stack <- stackFromList [1,2,3,4,5]
+  list <- (atomically (readTVar $ top stack)) >>= nodesToListSTM
   [1,2,3,4,5] @=? list
 
 singleThreadTest = do
-  lfs <- newLFS 100 100
+  stack <- newStackSTM
 
-  pushLFS lfs 5
-  pushLFS lfs 4
-  list <- readIORef (top lfs) >>= nodesToListIO
+  pushStackSTM stack 5
+  pushStackSTM stack 4
+  list <- (atomically (readTVar $ top stack)) >>= nodesToListSTM
   [4,5] @=? list
 
-  pushLFS lfs 9
-  list <- readIORef (top lfs) >>= nodesToListIO
+  pushStackSTM stack 9
+  list <- (atomically (readTVar $ top stack)) >>= nodesToListSTM
   [9,4,5] @=? list
 
-  _ <-popLFS lfs
-  list <- readIORef (top lfs) >>= nodesToListIO
+  _ <-popStackSTM stack
+  list <- (atomically (readTVar $ top stack)) >>= nodesToListSTM
   [4,5] @=? list
 
-  _ <-popLFS lfs
-  list <- readIORef (top lfs) >>= nodesToListIO
+  _ <-popStackSTM stack
+  list <- (atomically (readTVar $ top stack)) >>= nodesToListSTM
   [5] @=? list
 
 multipleThreadPushTest = do
-  lfs <- newLFS 100 100
-  createThreads lfs 8 8 100 []
-  list <- readIORef (top lfs) >>= nodesToListIO
+  stack <- newStackSTM
+  createThreads stack 8 8 100 []
+  list <- (atomically (readTVar $ top stack)) >>= nodesToListSTM
   800 @=? length list
 
 multipleThreadPopTest = do
-  lfs <- newLFS 100 100
-  repeatIO 1000 $ pushLFS lfs 2
-  createThreads lfs 8 0 100 []
-  list <- readIORef (top lfs) >>= nodesToListIO
+  stack <- newStackSTM
+  repeatIO 1000 $ pushStackSTM stack 2
+  createThreads stack 8 0 100 []
+  list <- (atomically (readTVar $ top stack)) >>= nodesToListSTM
   200 @=? length list
 
 -- Bootstrapping
 allTests = test [
-  "LFS from list and back" ~: listToLFSAndBackTest,
+  "stack from list and back" ~: listToStackAndBackTest,
   "Single thread" ~: singleThreadTest,
   "Multiple thread pops" ~: multipleThreadPopTest,
   "Multiple thread push" ~: multipleThreadPushTest

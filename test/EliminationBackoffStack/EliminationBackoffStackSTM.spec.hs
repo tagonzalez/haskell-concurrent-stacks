@@ -1,6 +1,6 @@
 module Main where
 
-import EliminationBackoffStack.EliminationBackoffStackCASusingSTM
+import EliminationBackoffStack.EliminationBackoffStackSTM
 import UtilsSTM
 import Test.HUnit
 import Control.Concurrent.Async
@@ -10,17 +10,17 @@ import Data.IORef
 import Control.Concurrent.STM
 
 singleThreadTest = do
-    ebs <- newEBS 10 100
-    pushEBS ebs 3
-    pushEBS ebs 4
-    pushEBS ebs 5
-    popEBS ebs
-    popEBS ebs
+    ebs <- newEBSSTM 10 100
+    pushEBSSTM ebs 3
+    pushEBSSTM ebs 4
+    pushEBSSTM ebs 5
+    popEBSSTM ebs
+    popEBSSTM ebs
     res <- (atomically $ readTVar (top ebs)) >>= nodesToListSTM
     [3] @=? res
 
 multipleThreadTest = do
-    ebs <- newEBS 10 100
+    ebs <- newEBSSTM 10 100
     tid1 <- async (thread1 ebs)
     tid2 <- async (thread2 ebs)
     poppedItems <- mapM wait [tid1, tid2]
@@ -28,16 +28,16 @@ multipleThreadTest = do
     True @=? elem (poppedItems ++ remainingItems) (permutations [2..7])
 
     where thread1 ebs = do
-            pushEBS ebs (3::Int)
-            pushEBS ebs 5
-            res <- popEBS ebs
-            pushEBS ebs 7
+            pushEBSSTM ebs (3::Int)
+            pushEBSSTM ebs 5
+            res <- popEBSSTM ebs
+            pushEBSSTM ebs 7
             return res
           thread2 ebs = do
-            pushEBS ebs 2
-            pushEBS ebs 4
-            pushEBS ebs 6
-            popEBS ebs >>= return
+            pushEBSSTM ebs 2
+            pushEBSSTM ebs 4
+            pushEBSSTM ebs 6
+            popEBSSTM ebs >>= return
 
 
 -- Bootstrapping

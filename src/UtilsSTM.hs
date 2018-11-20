@@ -13,7 +13,7 @@ repeatIO n action = do
 
 nodesToListSTM node =
   case node of
-    Nd v nxt -> do
+    NdSTM v nxt -> do
       nextNode <- atomically $ readTVar nxt
       acc <- nodesToListSTM nextNode
       return $ v:acc

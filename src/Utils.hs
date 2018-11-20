@@ -13,7 +13,7 @@ repeatIO n action = do
 
 nodesToListIO node =
   case node of
-    Nd v nxt -> do
+    NdIO v nxt -> do
       nextNode <- readIORef nxt
       acc <- nodesToListIO nextNode
       return $ v:acc

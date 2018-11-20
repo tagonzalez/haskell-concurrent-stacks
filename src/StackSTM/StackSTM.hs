@@ -24,7 +24,7 @@ popStackSTM:: Show a => StackSTM a -> IO a
 popStackSTM st = atomically $ do
     resNode <- readTVar $ top st
     case resNode of
-      Nd v nxt -> do
+      NdSTM v nxt -> do
         newTop <- readTVar nxt
         writeTVar (top st) newTop
         return v

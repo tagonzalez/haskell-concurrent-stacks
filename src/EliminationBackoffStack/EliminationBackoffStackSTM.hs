@@ -14,7 +14,7 @@ import Common.Backoff
 import Data.TLS.GHC
 import Control.Concurrent.STM
 
-data EliminationBackoffStack a = EBS {top :: TVar (NodeSTM a), capacity :: Int, eliminationArray :: EliminationArraySTM a, policy :: TLS RangePolicy}
+data EliminationBackoffStack a = EBSSTM {top :: TVar (NodeSTM a), capacity :: Int, eliminationArray :: EliminationArraySTM a, policy :: TLS RangePolicy}
 
 newEBSSTM :: Int -> Integer ->  IO (EliminationBackoffStack a)
 newEBSSTM capacity duration = do
@@ -22,7 +22,7 @@ newEBSSTM capacity duration = do
   let maxRange = capacity - 1 -- Last accessible position within the elimination array (0-based index)
   rgPcy <- mkTLS $ newRangePolicy maxRange -- range policy must be thread local according to Shavit
   elArr <- newEliminationArraySTM capacity duration
-  return $ EBS nullRef capacity elArr rgPcy
+  return $ EBSSTM nullRef capacity elArr rgPcy
 
 tryPushSTM :: Eq a => EliminationBackoffStack a -> NodeSTM a -> IO Bool
 tryPushSTM ebs node = do

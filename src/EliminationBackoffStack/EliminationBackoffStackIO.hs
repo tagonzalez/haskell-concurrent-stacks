@@ -14,7 +14,7 @@ import Utils
 import Common.Backoff
 import Data.TLS.GHC
 
-data EliminationBackoffStackIO a = EBS {top :: IORef (NodeIO a), capacity :: Int, eliminationArray :: EliminationArrayIO a, policy :: TLS RangePolicy}
+data EliminationBackoffStackIO a = EBSIO {top :: IORef (NodeIO a), capacity :: Int, eliminationArray :: EliminationArrayIO a, policy :: TLS RangePolicy}
 
 newEBSIO :: Int -> Integer ->  IO (EliminationBackoffStackIO a)
 newEBSIO capacity duration = do
@@ -22,7 +22,7 @@ newEBSIO capacity duration = do
   let maxRange = capacity - 1 -- Last accessible position within the elimination array (0-based index)
   rgPcy <- mkTLS $ newRangePolicy maxRange -- range policy must be thread local according to Shavit
   elArr <- newEliminationArrayIO capacity duration
-  return $ EBS nullRef capacity elArr rgPcy
+  return $ EBSIO nullRef capacity elArr rgPcy
 
 tryPushIO :: Eq a => EliminationBackoffStackIO a -> NodeIO a -> IO Bool
 tryPushIO ebs node = do

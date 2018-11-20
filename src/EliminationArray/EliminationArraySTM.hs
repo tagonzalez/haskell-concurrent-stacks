@@ -3,12 +3,12 @@ module EliminationArray.EliminationArraySTM where
 import LockFreeExchanger.LockFreeExchangerSTM
 import System.Random
 
-data EliminationArraySTM a = EA {exchanger :: [LockFreeExchangerSTM a], duration :: Integer}
+data EliminationArraySTM a = EASTM {exchanger :: [LockFreeExchangerSTM a], duration :: Integer}
 
 newEliminationArraySTM :: Int -> Integer -> IO (EliminationArraySTM a)
 newEliminationArraySTM capacity duration = do
   exchangers <- newExchangerList capacity
-  return $ EA exchangers duration
+  return $ EASTM exchangers duration
   where newExchangerList capacity =
           case capacity of
             0 -> return []

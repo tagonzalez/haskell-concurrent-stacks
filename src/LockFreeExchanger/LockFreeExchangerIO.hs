@@ -9,10 +9,10 @@ import Control.Exception
 import Control.Monad.Loops
 import Control.Concurrent
 
-data LockFreeExchangerIO a = LFE {slot :: IORef (Maybe a, State)}
+data LockFreeExchangerIO a = LFEIO {slot :: IORef (Maybe a, State)}
 
 newLockFreeExchangerIO :: IO (LockFreeExchangerIO a)
-newLockFreeExchangerIO = (newIORef (Nothing, EMPTY)) >>= return.LFE
+newLockFreeExchangerIO = (newIORef (Nothing, EMPTY)) >>= return.LFEIO
 
 getSlotIO :: IORef (Maybe a, State) -> IORef State -> IO (Maybe a)
 getSlotIO slot stampHolder = do

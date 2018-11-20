@@ -11,13 +11,13 @@ import Common.Exceptions
 import Control.Monad.Loops
 import Data.Maybe
 
-data LockFreeStackSTM a = LFS { top :: TVar (NodeSTM a), backoffLFS :: Backoff }
+data LockFreeStackSTM a = LFSSTM { top :: TVar (NodeSTM a), backoffLFS :: Backoff }
 
 newLFSSTM :: Int -> Int -> IO (LockFreeStackSTM a)
 newLFSSTM min max = do
   bck <- newBackoff min max
   nullRef <- atomically $ newTVar Null
-  return $ LFS nullRef bck
+  return $ LFSSTM nullRef bck
 
 tryPushSTM :: Eq a => LockFreeStackSTM a -> NodeSTM a -> IO Bool
 tryPushSTM lfs node = do

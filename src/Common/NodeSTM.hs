@@ -1,7 +1,7 @@
 module Common.NodeSTM where
 import Control.Concurrent.STM
 
-data NodeSTM a = Nd { val :: a, next :: TVar (NodeSTM a) } | Null
+data NodeSTM a = NdSTM { val :: a, next :: TVar (NodeSTM a) } | Null
 
 instance Eq a => Eq (NodeSTM a) where
   Nd v1 n1 == Nd v2 n2 = v1 == v2 && n1 == n2

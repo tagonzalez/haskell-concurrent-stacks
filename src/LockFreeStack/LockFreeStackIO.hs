@@ -10,13 +10,13 @@ import Control.Monad.Loops
 import Data.Maybe
 import Utils
 
-data LockFreeStackIO a = LFS { top :: IORef (NodeIO a), backoffLFS :: Backoff }
+data LockFreeStackIO a = LFSIO { top :: IORef (NodeIO a), backoffLFS :: Backoff }
 
 newLFSIO :: Int -> Int -> IO (LockFreeStackIO a)
 newLFSIO min max = do
   bck <- newBackoff min max
   nullRef <- newIORef Null
-  return $ LFS nullRef bck
+  return $ LFSIO nullRef bck
 
 tryPushIO :: Eq a => LockFreeStackIO a -> NodeIO a -> IO Bool
 tryPushIO lfs node = do

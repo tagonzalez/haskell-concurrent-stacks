@@ -9,7 +9,7 @@ import Control.Exception
 import Control.Monad.Loops
 import Control.Concurrent.STM
 
-data LockFreeExchangerSTM a = LFE {slot :: TVar (Maybe a, State)}
+data LockFreeExchangerSTM a = LFESTM {slot :: TVar (Maybe a, State)}
 
 getSlotSTM :: TVar (Maybe a, State) -> IORef State -> IO (Maybe a)
 getSlotSTM slot stampHolder = do
@@ -18,7 +18,7 @@ getSlotSTM slot stampHolder = do
   return val
 
 newLockFreeExchangerSTM :: IO (LockFreeExchangerSTM a)
-newLockFreeExchangerSTM = (atomically $ newTVar (Nothing,EMPTY)) >>= return.LFE
+newLockFreeExchangerSTM = (atomically $ newTVar (Nothing,EMPTY)) >>= return.LFESTM
 
 exchangeSTM :: (Eq a) => LockFreeExchangerSTM a -> Maybe a -> Integer -> IO (Maybe a)
 exchangeSTM lfe myItem timeout = do

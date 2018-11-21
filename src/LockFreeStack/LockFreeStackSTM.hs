@@ -55,10 +55,10 @@ popLFSSTM lfs = do
   res <- newIORef Nothing
 
   whileM_ (readIORef ret) $ do
-    returnNodeSTM <- tryPopSTM lfs
-    if returnNodeSTM /= Null
+    returnNode <- tryPopSTM lfs
+    if returnNode /= Null
       then do
-        writeIORef res $ Just (val returnNodeSTM)
+        writeIORef res $ Just (val returnNode)
         writeIORef ret False
       else backoff (backoffLFS lfs)
 

@@ -1,4 +1,4 @@
-all: tesis.pdf
+all: ./chapters/**/*.tex
 	pdflatex -shell-escape tesis.tex && pdflatex -shell-escape tesis.tex
 	open tesis.pdf
 

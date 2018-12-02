@@ -1,6 +1,110 @@
 \chapter{Experimentación}
-\section{Instrumentación}
-\subsection{Estructura de los experimentos}
-\subsection{Medición del tiempo}
+Los experimentos realizados sobre las implementaciones mencionadas en el capítulo anterior tienen como objetivo de comparar el funcionamiento, en tiempo de ejecución, de los algoritmos en sus distintas variantes de implementación. Se realizaron varios experimentos preliminares para analizar como los parámetros de cada estructura utilizada puede alterar el tiempo de ejecución. Por ejemplo, realizamos un análisis del rendimiento de un \mintinline{haskell}{LockFreeStack} según sus distintos parámetros (tiempos limites mínimos y máximos de backoff) para luego usar la configuración óptima al momento de comparar el rendimiento de la estructura con las demás. Luego, se realizaron los experimentos comparando las mismas estructuras, alterando las variables de control para obtener resultados en los cuales se pudieron apreciar tendencias significativas y así realizar un análisis comprensivo.
+
+\section{Detalle de los experimentos}
+
+\subsection{Instrumentación para realizar los experimentos}
+Las implementaciones comparadas en los experimentos son \mintinline{haskell}{LockFreeStackIO}, \mintinline{haskell}{LockFreeStackSTM}, \mintinline{haskell}{EliminationBackoffStackIO}, \mintinline{haskell}{EliminationBackoffStackSTM}, y \mintinline{haskell}{StackSTM}. Para cada una de ellas, tendremos un programa Haskell tomará los siguientes parámetros:
+
+\begin{itemize}
+    \item \mintinline{haskell}{min} y \mintinline{haskell}{max}: Los parámetros para la estructura \mintinline{haskell}{LockFreeStack}. Estos consisten de los límites mínimos y máximos de la estructura de backoff que se encuentra detallada en la subsección \ref{sub:backoff}.
+    \item \mintinline{haskell}{count} y \mintinline{haskell}{duration}: Los parámetros para la estructura \mintinline{haskell}{EliminationBackoffStack}. Estos son la capacidad del \mintinline{haskell}{EliminationArray} y la duración del timeout a pasar por parámetro en las llamdas a la función \mintinline{haskell}{exchange} de cada \mintinline{haskell}{LockFreeExchanger}.
+    \item \mintinline{haskell}{threadCount}: Cantidad de hilos de ejecución que serán creados para operar sobre una pila.
+    \item \mintinline{haskell}{distributeOperations}: un valor booleano que determina si el parámetro \mintinline{haskell}{operationCount} se interpreta como la cantidad total de operaciones a ser distribuida entre los hilos o la cantidad que cada hilo debe realizar por separado.
+    \item \mintinline{haskell}{operationCount}: Cantidad de operaciones a realizar en el experimento. Estas pueden ser cantidad de operaciones por hilo, o cantidad de operaciones totales que luego serán distribuidas entre la cantidad de hilos según el experimento.
+    \item \mintinline{haskell}{pushPercentage}: Las proporción de hilos que realizarán operaciones de escritura (\mintinline{haskell}{push}). Se tomará la cantidad de hilos de ejecución y se calculará la cantidad de hilos que realizarán operaciones de escritura sobre la pila según la proporción, el resto realizará operaciones de lectura (\mintinline{haskell}{pop}).
+\end{itemize}
+
+El programa se encarga de crear una instancia de pila según la implementación y sus parámetros, luego inserta 100000 elementos para evitar que ocurran excepciones por pila vacía durante la ejecución. Una vez instanciada la pila, se calcula la cantidad de threads escritores que se deben crear según la proporción dada por \mintinline{haskell}{pushPercentage} sobre \mintinline{haskell}{threadCount} y la cantidad de operaciones que debe realizar cada hilo tomando en cuenta los parámetros \mintinline{haskell}{operationCount} y \mintinline{haskell}{distributeOperations}. Finalmente se inicia un reloj al crear los hilos escritores y lectores para que realicen sus operaciones y al finalizar todos los hilos se imprime por pantalla la cantidad de tiempo en segundos transcurrido. A continuación se presenta el código Haskell del programa para la implementación \mintinline{haskell}{EliminationBackoffStackIO} en la figura \ref{fig:expEBSIO}.
+
+\begin{figure}[H]
+    \centering
+    \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+callPushes stack operationCount = do
+    if operationCount > 0
+        then do
+            (randomIO :: IO Int) >>= pushEBSIO stack
+            callPushes stack (operationCount - 1)
+        else do
+            return ()
+
+callPops stack operationCount = do
+    if operationCount > 0
+        then do
+            _ <- catch (popEBSIO stack) (\(e :: EmptyException) -> return 1)
+            callPops stack (operationCount - 1)
+        else do
+            return ()
+
+threadAction isPushThread = if isPushThread then callPushes else callPops
+
+createThreads stack threadCount pushThreadCount operationCount tids = do
+    let isPushThread = if pushThreadCount > 0 then True else False
+    if threadCount > 0
+        then do
+            tid <- async (threadAction isPushThread stack operationCount)
+            createThreads stack (threadCount - 1) (pushThreadCount - 1) operationCount (tid : tids)
+        else
+            mapM_ wait tids
+
+parseCommandLineArguments args = do
+    -- Get arguments from command line
+    capacity <- readIO (args !! 0) :: IO Int
+    duration <- readIO (args !! 1) :: IO Integer
+    operationCount <- readIO (args !! 2) :: IO Int
+    pushPercentage <- readIO (args !! 3) :: IO Float
+    threadCount <- readIO (args !! 4) :: IO Int
+    distributeOperations <- readIO (args !! 5) :: IO Bool
+    -- Distribute operationCount
+    operationCount <- return $ if distributeOperations then quot operationCount threadCount else operationCount
+    -- Create stack and calculate amount of writer/push threads
+    stack <- newEBSIO capacity duration
+    let pushThreadCount = floor $ (fromIntegral threadCount :: Float) * pushPercentage
+    return (stack, threadCount, operationCount, pushThreadCount)
+
+main = do
+    args <- getArgs
+    (stack, threadCount, operationCount, pushThreadCount) <- parseCommandLineArguments args
+    callPushes stack 1000000
+    timeIt "" $ createThreads stack threadCount pushThreadCount operationCount []
+    return ()
+    \end{minted}
+    \caption{Código Haskell para la experimentación sobre la implementación \mintinline{haskell}{EliminationBackoffStackIO}}
+    \label{fig:expEBSIO}
+\end{figure}
+
+% Fijarse los números de líneas para dejar en claro en qué líneas hay renombre por funciones de otras implementaciónes
+
+La experimentación consiste en comparar los tiempos de ejecución de estos programas para determinar cuales implementaciones obtienen un mejor rendimiento en tiempo de ejecución respecto de las demás. Cada programa será ejecutado varias veces para luego realizar un promedio y poder obtener una apreciación de la consistencia de los resultados con diagramas \emph{boxplot}. Los experimentos realizados fueron tres. Uno estudia cómo varía el tiempo de ejecución respecto de la variación de la proporción de hilos escritores representado en el valor de la variable \mintinline{haskell}{pushPercentages}. Los otros dos estudian cómo la variación de la cantidad de hilos totales afecta el tiempo de ejecución pero con una distinción, en un experimento la cantidad de operaciones, representada por la variable \mintinline{haskell}{operationCount}, es distribuída entre los hilos mientras que en el otro es la cantidad de operaciones que cada hilo debe realizar. A continuación se listan los nombres dados a los experimentos:
+\begin{itemize}
+    \item \mintinline{haskell}{pushPercentages}: proporción de hilos escritores vs. tiempo de ejecución.
+    \item \mintinline{haskell}{numberOfThreads}: cantidad de hilos vs. tiempo de ejecución. En este caso la cantidad de operaciones totales aumenta ya que cada hilo debe realizar una cantidad de operaciones igual al parámetro \mintinline{haskell}{operationCount}
+    \item \mintinline{haskell}{numberOfThreadsDist}: mismo análisis que \mintinline{haskell}{numberOfThreads} con la distinción que la cantidad de total de operaciones realizada se mantiene constante para cada cantidad de hilos. Es decir, el parámetro \mintinline{haskell}{operationCount} establece el número de operaciones totales y estas son distribuídas equitativamente según la cantidad de hilos que haya.
+\end{itemize}
+
+Cada uno de estos tres experimentos tienen un script bash para que se encarga de ejecutar los programas Haskell variando los parámetros de acorde al experimento, la implementación de pila deseada, y también la cantidad de núcleos del procesador. Una vez determinada la combinación implementación-cantidad de núcleos, se ejecuta el programa Haskell de manera que la variación de parámetros coincida con lo que se quiere observar del experimento. Es decir, si el experimento en cuestión busca estudiar cómo la proporción de hilos escritores varía el tiempo de ejecución, el script bash se encargará de ejecutar, para cada combinación de implementación-cantidad de núcleos, el programa Haskell de esa implementación variando el valor del parámetro \mintinline{haskell}{pushPercentages} y manteniendo el resto constantes. Para cada valor que puede tomar la variable \mintinline{haskell}{pushPercentages} en este ejemplo, se realizarán varias corridas del mismo programa Haskell y se escribirán los resultados en un archivo CSV para cada combinación implementación-cantidad de núcleos. Luego los scripts llaman a un programa Python que creará los gráficos partiendo de los archivos CSV escritos anteriormente.
+
+\subsection{Hipótesis}
+En primer lugar, la hipótesis manejada era que la implementación STM \mintinline{haskell}{StackSTM} superaría a varias, si no todas, de las demás implementaciones ya que se ha realizado un trabajo importante sobre el compilador GHC para poder mejorar la performance de STM. Unos resultados parecidos se encuentran en \hl{ref a paper-abq} dónde se comparan dos implementaciones de una misma estructura, una utilizando STM y la otra utilizando algoritmos que utilizan locks sobre la estructura de datos. En este trabajo, los resultados muestran que la implementación STM supera a la otra a medida que aumenta la cantidad de núcleos a utilizar por el procesador entre cada corrida.
+También estuvieron en consideración los resultados de \hl{ref a paper-linked-list} dónde se comparan implementaciones similares de una lista simplemente encadenada. En estos resultados, la implementación sobre STM no obtiene buenos tiempos de ejecución comparado al resto. Sin embargo, esto se debe a que en una lista encadenada, uno la debe recorrer y esto resulta en muchas llamadas a la función \mintinline{haskell}{atomically} para recorrer la lista. En el caso de la implementación de \mintinline{haskell}{StackSTM}, cada operación realiza una sola llamada a \mintinline{haskell}{atomically}, ya que las operaciones trabajan sólamente con el tope de la pila, y es por eso que no esperamos resultados similares a \hl{ref a linked list}.
 
 \section{Resultados}
+
+% Agregar una referencia a la página de Apple con las especificaciones
+Los experimentos fueron realizados utilizando una laptop MacBook Pro del año 2016 con las siguientes especificaciones:
+
+\begin{itemize}
+    \item \textbf{Procesador}: 2.0GHz dual-core Intel Core i5, Turbo Boost up to 3.1GHz, with 4MB shared L3 cache
+    \item \textbf{Memoria}: 16 GB 1867 MHz LPDDR3
+    \item \textbf{Sistema operativo}: macOS Mojave, versión 10.14
+\end{itemize}
+
+Dado que el equipo en cuestión tiene un procesador con cuatro núcleos, nuestros experimentos fueron limitados a ser realizados utilizando uno, dos, y cuatro núcleos.
+
+\subsection{Primer experimento: \mintinline{haskell}{pushPercentages}}
+\subsection{Segundo experimento: \mintinline{haskell}{numberOfThreads}}
+\subsection{Tercer experimento: \mintinline{haskell}{numberOfThreadsDist}}
+
+
+
+

@@ -278,7 +278,7 @@ getSlotSTM :: TVar (Maybe a, State) -> IORef State -> IO (Maybe a)
 
 \begin{figure}[H]
   \centering
-    \begin{subfigure}[b]{0.5\textwidth}
+    \begin{subfigure}[b]{0.4\textwidth}
     \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 getSlotIO slot stampHolder = do
   (val, state) <- readIORef slot

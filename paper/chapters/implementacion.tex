@@ -314,6 +314,7 @@ Si el estado no pasa a \mintinline{haskell}{BUSY} en el ciclo de las líneas 21 
 \item{\mintinline{haskell}{WAITING}: el hilo actual lee el valor escrito y escribe el suyo, luego termina la ejecución de la función. Este comportamiento se ve reflejado en las líneas 45 a 52 de la figura \ref{fig:exchange-io}.}
 \item{\mintinline{haskell}{BUSY}: en este caso, ya hay dos hilos realizando un intercambio. Por lo tanto, el hilo actual debe reintentar, volviendo al inicio del ciclo en la línea 9. Este comportamiento se ve reflejado en las líneas 53 y 54 de la figura \ref{fig:exchange-io}, dónde el algoritmo simplemente llama a la función \mintinline{haskell}{return ()} para luego entrar a una nueva iteración del ciclo de ejecución.}
 \end{itemize}
+\newpage
 
 \begin{figure}[H]
   \centering

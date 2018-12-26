@@ -4,7 +4,6 @@ bibliography
 *.o
 *.csv
 bin
-experiments
 *.gsheet
 test.hs
 *.gz
@@ -17,3 +16,5 @@ test.hs
 _minted-tesis
 *.toc
 tesis.pdf
+configs
+results

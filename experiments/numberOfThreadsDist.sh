@@ -12,13 +12,13 @@ mkdir ${outDir}/csv
 coreNumbers=(1 2 4)
 
 # Independent variable: number of threads
-threadCounts=(1 2 4 6 8 10 12 14 16 18 20)
+threadCounts=(1 10 20 30 40 50 60)
 
 # Controlled variables
-operations=10000
+operations=1000000
 min=100
 max=1000
-capacity=10
+capacity=1
 duration=100
 pushPercentage=0.75
 distributeOperations=True
@@ -49,7 +49,7 @@ function runExperiment(){
     printf "\n"
 }
 
-printf "numberOfThreads
+printf "${scriptName}-${date}
 pushPercentage, $pushPercentage
 operations, $operations
 min, $min
@@ -91,5 +91,5 @@ endTime=$(date +%s)
 
 echo "Results available in $outDir"
 echo "Time elapsed: $((${endTime} - ${startTime})) seconds"
-echo "Time elapsed: $((${endTime} - ${startTime})) seconds" >> ${outDir}/params.txt
+echo "\nTime elapsed: $((${endTime} - ${startTime})) seconds" >> ${outDir}/params.txt
 

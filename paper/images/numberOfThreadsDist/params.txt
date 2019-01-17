@@ -1,0 +1,10 @@
+numberOfThreadsDist-2019-01-14-011833
+pushPercentage, 0.75
+operations, 1000000
+min, 100
+max, 1000
+capacity, 1
+duration, 100
+iterations, 10
+distributeOperations, True
+Time elapsed: 10306 seconds

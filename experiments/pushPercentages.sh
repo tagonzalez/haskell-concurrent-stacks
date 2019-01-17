@@ -1,5 +1,4 @@
 startTime=$(date +%s)
-
 # Make output directory
 scriptName="pushPercentages"
 date=$(date '+%Y-%m-%d-%H%M%S')
@@ -19,9 +18,9 @@ pushPercentages=(0.10 0.20 0.30 0.40 0.50 0.60 0.70 0.80 0.90)
 operations=10000
 min=100
 max=1000
-capacity=10
+capacity=1
 duration=100
-threadCount=14
+threadCount=30
 distributeOperations=False
 
 # Number of times to replicate the experiment: iterations
@@ -50,7 +49,7 @@ function runExperiment(){
     printf "\n"
 }
 
-printf "pushPercentages
+printf "${scriptName}-${date}
 threadCount, $threadCount
 operations, $operations
 min, $min
@@ -92,4 +91,4 @@ endTime=$(date +%s)
 
 echo "Results available in $outDir"
 echo "Time elapsed: $((${endTime} - ${startTime})) seconds"
-echo "Time elapsed: $((${endTime} - ${startTime})) seconds" >> ${outDir}/params.txt
+echo "\nTime elapsed: $((${endTime} - ${startTime})) seconds" >> ${outDir}/params.txt

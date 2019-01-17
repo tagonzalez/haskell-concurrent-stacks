@@ -34,9 +34,9 @@ exchangeTest = do
 timeoutTest = do
     lfe <- newLockFreeExchangerIO
     randTimeout <- randomRIO (100,1000) :: IO Integer
-    timeBefore <- (getTime Realtime) >>= return.toNanoSecs
+    timeBefore <- (getTime Monotonic) >>= return.toNanoSecs
     res <- catch (exchangeIO lfe (Just (4 :: Int)) randTimeout) (\(e::TimeoutException)-> return $ Just 50)
-    timeAfter <- (getTime Realtime) >>= return.toNanoSecs
+    timeAfter <- (getTime Monotonic) >>= return.toNanoSecs
     let execTimeInMillis = quot (timeAfter - timeBefore) (10 ^ 6)
     True @=? execTimeInMillis >= (randTimeout)
     Just 50 @=? res

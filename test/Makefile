@@ -23,6 +23,9 @@ EliminationBackoffStackSTM.spec: EliminationBackoffStack/EliminationBackoffStack
 StackSTM.spec: StackSTM/StackSTM.spec.hs
 	ghc $(FLAGS) StackSTM/StackSTM.spec.hs -o bin/StackSTMTest
 
+test:
+	sh runTests.sh
+
 .PHONY: clean
 
 clean:

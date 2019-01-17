@@ -26,7 +26,7 @@ timeIt msg action = do
   let inSecs = (fromIntegral (endTime - startTime)) / (10 ** 9)
   if msg == ""
     then print inSecs
-    else putStrLn $ "[" ++ msg ++ "]" ++ ":" ++ " " ++ (show inSecs)
+    else putStrLn $ "[" ++ msg ++ "]" ++ ":" ++ " " ++ (show inSecs) -- useful for debugging
 
 data Counter = CNT {count:: TVar Int}
 

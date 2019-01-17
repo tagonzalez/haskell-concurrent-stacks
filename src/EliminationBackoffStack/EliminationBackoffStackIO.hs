@@ -10,7 +10,6 @@ import Common.Exceptions
 import Data.IORef
 import Control.Monad.Loops
 import Data.Maybe
-import Utils
 import Common.Backoff
 import Data.TLS.GHC
 

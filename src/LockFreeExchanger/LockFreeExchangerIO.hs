@@ -81,4 +81,4 @@ exchangeIO lfe myItem timeout = do
           timeoutNotDone <- systemNanoTime >>= return.((>) timeBound)
           (readIORef ret) >>= return.((&&) timeoutNotDone)
 
-        systemNanoTime = (getTime Realtime) >>= return.toNanoSecs
+        systemNanoTime = (getTime Monotonic) >>= return.toNanoSecs

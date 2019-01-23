@@ -19,12 +19,24 @@ emptyResults = {
 }
 
 resultsDir = sys.argv[1]
-# resultsDir = './results/numberOfThreads/numberOfThreads-2018-09-03-080407/'
 csvDir = resultsDir + 'csv/'
 plotsDir = resultsDir + 'plots/'
 
 coreNumbers = ['1', '2', '4']
 
+# Get max value from results to set the y-limits of the plots
+max_val = 0
+for coreNumber in coreNumbers:
+    results = emptyResults
+    for experiment in results:
+        with open(csvDir + experiment + '-' + coreNumber + '.csv','r') as csvfile:
+            plots = csv.reader(csvfile, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
+            csvfile.readline() #First line has labels
+            for row in plots:
+                if np.amax(row[1:])> max_val:
+                    max_val = np.amax(row[1:])
+
+# Plot results: individual graphs per implementation with boxplots
 for coreNumber in coreNumbers:
     results = emptyResults
     for experiment in results:
@@ -48,12 +60,14 @@ for coreNumber in coreNumbers:
         plt.plot(x,results[experiment])
         plt.boxplot(boxplotData, manage_xticks=manageX, widths=step*0.7, positions=x)
         plt.title('Experiment: ' + experiment + ', Number of cores: '+ coreNumber)
+        plt.ylim(0,max_val + 1)
         plt.xlabel('Number of threads')
         plt.ylabel('Execution time (seconds)')
         if not manageX:
             plt.xticks(np.arange(min(x), max(x)+ step, step))
         plt.savefig(plotsDir + experiment + '-' + coreNumber + '.png')
         plt.gcf().clear()
+    # Plot overall graph showing trendlines for the average values
     for experiment in results:
         plt.plot(x,results[experiment])
     plt.legend(results.keys(),loc="upper left")

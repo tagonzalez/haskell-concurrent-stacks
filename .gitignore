@@ -1,3 +1,4 @@
+*.gdoc
 .DS_Store
 bibliography
 *.hi

@@ -1,6 +1,6 @@
 all: expLFSIO expLFSSTM expEBSIO expEBSSTM expStackSTM
 
-FLAGS = --make -threaded -rtsopts -i../src/ -I0 -prof -fprof-auto
+FLAGS = --make -threaded -rtsopts -i../src/ -I0
 DATE=`date '+%Y-%m-%d-%H%M%S'`
 
 expLFSIO: src/LockFreeStack/expLFSIO.hs

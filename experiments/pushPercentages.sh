@@ -20,7 +20,7 @@ min=100
 max=1000
 capacity=1
 duration=100
-threadCount=30
+threadCount=20
 distributeOperations=False
 
 # Number of times to replicate the experiment: iterations

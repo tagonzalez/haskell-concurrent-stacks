@@ -3,6 +3,7 @@ import sys
 import csv
 import numpy as np
 
+# TODO: Check if numpy has similar function builtin
 def calcAverage(row):
     execTimeSum = 0.0
     for i in xrange(1,len(row)):
@@ -18,14 +19,28 @@ emptyResults = {
     "expStackSTM": []
 }
 
+implementationsPerExperiment = {
+    "expEBSIO": "EliminationBackoffStackIO",
+    "expEBSSTM": "EliminationBackoffStackSTM",
+    "expLFSIO": "LockFreeStackIO",
+    "expLFSSTM": "LockFreeStackSTM",
+    "expStackSTM": "StackSTM"
+}
+
+maxValuesPerCoreNumber = {
+    '1':0,
+    '2':0,
+    '4':0
+}
+
 resultsDir = sys.argv[1]
 csvDir = resultsDir + 'csv/'
 plotsDir = resultsDir + 'plots/'
 
 coreNumbers = ['1', '2', '4']
 
-# Get max value from results to set the y-limits of the plots
-max_val = 0
+
+# Get max value from results per core number to set the y-limits of the plots
 for coreNumber in coreNumbers:
     results = emptyResults
     for experiment in results:
@@ -33,8 +48,11 @@ for coreNumber in coreNumbers:
             plots = csv.reader(csvfile, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
             csvfile.readline() #First line has labels
             for row in plots:
-                if np.amax(row[1:])> max_val:
-                    max_val = np.amax(row[1:])
+                if np.amax(row[1:])> maxValuesPerCoreNumber[coreNumber]:
+                    maxValuesPerCoreNumber[coreNumber] = np.amax(row[1:])
+
+# TODO: Some axis labels are not working properly (pushPercentages)
+# TODO: Change what appears on the legend using the new implementations dictionary
 
 # Plot results: individual graphs per implementation with boxplots
 for coreNumber in coreNumbers:
@@ -60,7 +78,7 @@ for coreNumber in coreNumbers:
         plt.plot(x,results[experiment])
         plt.boxplot(boxplotData, manage_xticks=manageX, widths=step*0.7, positions=x)
         plt.title('Experiment: ' + experiment + ', Number of cores: '+ coreNumber)
-        plt.ylim(0,max_val + 1)
+        plt.ylim(0,maxValuesPerCoreNumber[coreNumber] + 1)
         plt.xlabel('Number of threads')
         plt.ylabel('Execution time (seconds)')
         if not manageX:

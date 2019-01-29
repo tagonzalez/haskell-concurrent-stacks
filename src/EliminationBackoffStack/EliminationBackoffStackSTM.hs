@@ -45,7 +45,7 @@ pushEBSSTM ebs value = do
           recordEliminationTimeout rangePolicy)
 
   where tryExchangePush ebs node value range ret rangePolicy = do
-          otherValue <- visit (eliminationArray ebs) (Just value) range
+          otherValue <- visitSTM (eliminationArray ebs) (Just value) range
           if otherValue == Nothing
             then do
               recordEliminationSuccess rangePolicy
@@ -83,7 +83,7 @@ popEBSSTM ebs = do
   readIORef res >>= return.fromJust
 
   where exchangePop ebs range ret res rangePolicy = do
-          otherValue <- visit (eliminationArray ebs) Nothing range
+          otherValue <- visitSTM (eliminationArray ebs) Nothing range
           case otherValue of
             Just v -> do
               recordEliminationSuccess rangePolicy

@@ -17,7 +17,7 @@ newEliminationArraySTM capacity duration = do
               rest <- newExchangerList (capacity - 1)
               return $ newExchanger : rest
 
-visit :: Eq a => EliminationArraySTM a -> Maybe a -> Int -> IO (Maybe a)
-visit elimArr value range = do
+visitSTM :: Eq a => EliminationArraySTM a -> Maybe a -> Int -> IO (Maybe a)
+visitSTM elimArr value range = do
   slot <- randomRIO (0, range)
   exchangeSTM ((exchanger elimArr) !! slot) value (duration elimArr)

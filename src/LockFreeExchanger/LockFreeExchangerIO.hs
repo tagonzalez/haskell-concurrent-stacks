@@ -20,7 +20,6 @@ getSlotIO slot stampHolder = do
   writeIORef stampHolder state
   return val
 
-
 exchangeIO :: (Eq a) => LockFreeExchangerIO a -> Maybe a -> Integer -> IO (Maybe a)
 exchangeIO lfe myItem timeout = do
   ret <- newIORef True

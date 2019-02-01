@@ -124,6 +124,97 @@ Los experimentos fueron realizados utilizando una laptop MacBook Pro del año 20
 Dado que el equipo en cuestión tiene un procesador con cuatro núcleos, nuestros experimentos fueron limitados a ser realizados utilizando uno, dos, y cuatro núcleos.
 
 \subsection{Primer experimento: \mintinline{haskell}{pushPercentages}}\label{subsec:pushPercentages}
+El experimento \mintinline{haskell}{pushPercentages} consistió de tomar los tiempos de ejecución de cada implementación de pila concurrente, variando la proporción de hilos escritores en cada iteración.
+A continuación se listan los parámetros que mantuvieron un valor constante durante el experimento.
+
+\begin{itemize}
+    \item Cantidad de hilos totales: 20
+    \item Cantidad de operaciones realizadas por hilo de ejecución: 10000
+    \item Límite mínimo de backoff para las implementaciones de LFS: 100
+    \item Límite máximo de backoff para las implementaciones de LFS: 1000
+    \item Capacidad del \mintinline{haskell}{EliminationArray} para las implementaciones de EBS: 1
+    \item Duración del timeout para las implementaciones de EBS: 100
+    \item Cantidad de repeticiones de cada corrida: 10
+\end{itemize}
+
+Los resultados, presentados en la Fig. \ref{fig:pushPercentages-all} muestran que las implementaciones de LFS, tanto IO como STM, no parecen variar sus tiempos de ejecución según la variación en la proporción de hilos escritores/hilos lectores.
+Las pequeñas variaciones que se presentan para estas dos implementaciones pueden ser la causa de distintos tiempos de \emph{backoff} que es determinado de manera aleatoria. Se puede observar este comportamiento en el gráfico de la subfigura \ref{subfig:pushPercentages-lfsio-2} y \ref{subfig:pushPercentages-lfsstm-2}.
+
+\clearpage
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/pushPercentages/plots/1.png}
+        \caption{1 núcleo}
+        \label{subfig:pushPercentages-1core}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/pushPercentages/plots/2.png}
+        \caption{2 núcleos}
+        \label{subfig:pushPercentages-2core}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.5\textwidth}
+        \includegraphics[width=\textwidth]{images/pushPercentages/plots/4.png}
+        \caption{4 núcleos}
+        \label{subfig:pushPercentages-4core}
+    \end{subfigure}
+    \caption{Resultados para el experimento \mintinline{haskell}{pushPercentages}}
+    \label{fig:pushPercentages-all}
+\end{figure}
+
+En cuanto a la implementación de pila sobre STM, \mintinline{haskell}{StackSTM}, vemos que los tiempos de ejecución aumentan a medida que se aumenta la cantidad de hilos escritores.
+Esto puede ser debido a que la operación de insertar un elemento nuevo en la pila sea más costoso a la de leer y quitar un elemento ya que requiere declarar un nuevo nodo para insertar, consumiendo memoria nueva y demorando más la operación.
+La implementación de EBS sobre STM también presenta una tendencia similar, aunque toma tiempos de ejecución mayores a los de \mintinline{haskell}{StackSTM}.
+
+Por otra parte, la implementación de EBS sobre IO aparenta tener resultados erráticos comparado a su versión STM.
+En las corridas realizadas utilizando 4 núcleos, representados en la Fig. \ref{subfig:pushPercentages-4core}, los tiempos de ejecución parecen ser mayores al inicio del experimento, es decir, cuando la proporción de hilos escritores es del 10\%.
+A continuación se presenta un gráfico con los resultados para esta configuración del experimento con diagramas \emph{boxplot} para analizar la consistencia de la implementación en la Fig. \ref{fig:pushPercentages-ebsio-4}.
+En el gráfico se puede ver que los resultados para una proporción de hilos escritores de 10\% presentan un rango muy amplio y es por eso que se obtiene un valor promedio mayor en esta configuración.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth]{images/pushPercentages/plots/expEBSIO-4.png}
+    \caption{Resultados de EBS sobre IO, con cuatro núcleos de ejecución}
+    \label{fig:pushPercentages-ebsio-4}
+\end{figure}
+
+La consistencia de cada implementación para producir los mismos resultados se puede apreciar con los diagramas \emph{boxplot} que se encuentran en la figura \ref{fig:pushPercentages-boxplots}.
+
+\clearpage
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/pushPercentages/plots/expEBSIO-2}
+        \caption{Resultados para EBS sobre IO}
+        \label{subfig:pushPercentages-ebsio-2}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/pushPercentages/plots/expEBSSTM-2}
+        \caption{Resultados para EBS sobre STM}
+        \label{subfig:pushPercentages-ebsstm-2}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/pushPercentages/plots/expLFSIO-2}
+        \caption{Resultados para LFS sobre IO}
+        \label{subfig:pushPercentages-lfsio-2}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/pushPercentages/plots/expLFSSTM-2}
+        \caption{Resultados para LFS sobre STM}
+        \label{subfig:pushPercentages-lfsstm-2}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/pushPercentages/plots/expStackSTM-2}
+        \caption{Resultados para LFS sobre STM}
+        \label{subfig:pushPercentages-stackstm-2}
+    \end{subfigure}
+    \caption{Comparación de implementaciones IO vs STM del experimento \mintinline{haskell}{pushPercentages}}
+    \label{fig:pushPercentages-boxplots}
+\end{figure}
 
 \clearpage
 \subsection{Segundo experimento: \mintinline{haskell}{numberOfThreads}}\label{subsec:numberOfThreads}

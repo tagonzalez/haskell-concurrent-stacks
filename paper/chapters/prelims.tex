@@ -1,29 +1,82 @@
-\section{Variantes de implementación: IO y STM}
-Las estructuras \mintinline{haskell}{LockFreeStack} y \mintinline{haskell}{EliminationBackoffStack} son implementaciones de una pila concurrente libre de locks que utilizan la primitiva de sincronización \emph{compareAndSet} (CAS). Ambas tienen dos variantes de implementación: una que implementa CAS sobre IO y la otra sobre STM.
+\chapter{Preliminares}
+
+
+\section{Algoritmos libres de locks}
+En el contexto de la programación concurrente, los algoritmos libres de locks, también llamados algoritmos optimistas, son algoritmos que actuan sobre un recurso compartido por distintos hilos de ejecución y utilizan una operación atómica como \emph{compare and set} (CAS) para modificar el recurso.
+En el caso que la llamada a CAS falle, el algoritmo vuelve a ejecutarse hasta que el recurso sea modificado con exito.
+A continuación se presenta un ejemplo de un contador y una operación \mintinline{haskell}{inc} para incrementar el valor del contador de manera segura.
 
 \begin{figure}[H]
-\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
-atomCAS :: Eq a => IORef a -> a -> a -> IO Bool
-atomCAS ptr old new =
-  atomicModifyIORef ptr (\ cur -> if cur == old
-                                  then (new, True)
-                                  else (cur, False))
+\begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+data Counter = Ref Int
+
+inc :: Counter -> IO ()
+inc counter = do
+    loop <- newRef True
+    whileM_ (readRef loop) $ do
+        oldValue <- readRef counter
+        let newValue = oldValue + 1
+        success <- atomCAS counter oldValue newValue
+        if success
+            then writeRef loop False
+            else return ()
 \end{minted}
-\caption{\mintinline{haskell}{atomCAS} utilizando IORef}
+\caption{Algoritmo optimista para incrementar un contador}
+\label{fig:lockfree-counter-example}
 \end{figure}
 
-\begin{figure}[H]
-\begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
-atomCAS :: Eq a => TVar a -> a -> a -> IO Bool
-atomCAS ptr old new = atomically $ do
-  cur <- readTVar ptr
-  if cur == old
-  then do
-    writeTVar ptr new
-    return True
-  else return False
-\end{minted}
-\caption{\mintinline{haskell}{atomCAS} utilizando STM}
-\end{figure}
+En el código de la Fig. \ref{fig:lockfree-counter-example} se presenta la estructura del contador: una referencia a un entero.
+La operación \mintinline{haskell}{inc} se encarga de incrementar el valor de esta referencia de manera segura en el caso de que el contador sea compartido con otros hilos de ejecución.
+En el algoritmo para esta operación, primero se declara una referencia booleana \mintinline{haskell}{loop} para luego poder mantener un ciclo con la función de Haskell \mintinline{haskell}{whileM_}.
+En el ciclo se realiza una lectura del valor del contador, guardando el resultado en la variable \mintinline{haskell}{oldValue}, para luego realizar la llamada a la función \mintinline{haskell}{atomCAS}.
 
-Este código es idéntico al que se encuentra presentado en \hl{referencia al paper de linked list}
+Esta llamada realizará una nueva lectura del valor del contador.
+Si el valor leído coincide con el de \mintinline{haskell}{oldValue} se modifica el valor del contador con el valor de \mintinline{haskell}{newValue}, retornando \mintinline{haskell}{True} como resultado de la función.
+Si los valores no coinciden significa que hubo un hilo de ejecución que logró modificar el valor del contador luego de que lo leamos inicialmente en la línea.
+En este caso no se realizan cambios y la llamada a \mintinline{haskell}{atomCAS} retornará \mintinline{haskell}{False}.
+Es importante notar que todas las acciones de la función \mintinline{haskell}{atomCAS} son realizadas de manera atómica.
+
+Según el valor de retorno, el algoritmo de la función \mintinline{haskell}{inc} terminará la ejecución modificando el valor de la referencia \mintinline{haskell}{loop} a \mintinline{haskell}{False} para detener el ciclo en el caso de éxito o volverá a iniciar el ciclo.
+La línea 12 de la Fig. \ref{fig:lockfree-counter-example} que llama a la función \mintinline{haskell}{return} con parámetro \mintinline{haskell}{()} no realiza ninguna operación y simplemente permite volver a iniciar el ciclo.
+
+% \section{Primitivas de sincronización}
+% \subsection{IORef}
+% \begin{figure}[H]
+% \begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
+% atomCAS :: Eq a => IORef a -> a -> a -> IO Bool
+% atomCAS ptr old new =
+%   atomicModifyIORef ptr (\ cur -> if cur == old
+%                                   then (new, True)
+%                                   else (cur, False))
+% \end{minted}
+% \caption{\mintinline{haskell}{atomCAS} utilizando IORef}
+% \end{figure}
+
+% \subsection{STM}
+
+% \begin{figure}[H]
+% \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+% atomically :: STM a -> IO a
+% readTVar :: a -> STM (TVar a)
+% newTVar :: TVar a
+% writeTVar :: TVar a -> STM a -> a -> STM ()
+% \end{minted}
+% \caption{Caption here}
+% \label{fig:stm-interface}
+% \end{figure}
+
+% \begin{figure}[H]
+% \begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
+% atomCAS :: Eq a => TVar a -> a -> a -> IO Bool
+% atomCAS ptr old new = atomically $ do
+%   cur <- readTVar ptr
+%   if cur == old
+%   then do
+%     writeTVar ptr new
+%     return True
+%   else return False
+% \end{minted}
+% \caption{\mintinline{haskell}{atomCAS} utilizando STM}
+% \end{figure}
+
+% Este código es idéntico al que se encuentra presentado en \hl{referencia al paper de linked list}

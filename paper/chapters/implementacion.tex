@@ -26,7 +26,7 @@ pop :: Eq a => Stack a -> IO a
 
 La función \mintinline{haskell}{push} inserta un nuevo nodo al tope de la pila con un valor recibido por parámetro, esto se ve reflejado en la primera línea de la figura \ref{fig:interfazStack}. Por el otro lado, la función pop lee el valor que se encuentra en el tope de la pila y remueve el nodo. En el caso que no haya ningún elemento en la pila, la ejecución deberá arrojar una excepción que será denominada \mintinline{haskell}{EmptyException}.
 
-En este capítulo se encuentran detalladas las distintas implementaciones utilizadas para la evaluación de performance: \mintinline{haskell}{LockFreeStack} (sección \ref{sec:lfs}), \mintinline{haskell}{EliminationBackoffStack} (sección \ref{sec:ebs}), y \mintinline{haskell}{StackSTM}. Las primeras dos estructuras son maneras conocidas para la implementación de una pila concurrente y se encuentran detalladas en \hl{ref a shavit} que hacen uso de la primitiva de sincronización \emph{compare and set}. La estructura restante es una implementación \emph{naive} de una pila concurrente utilizando las herramientas provistas la librería STM de Haskell.
+En este capítulo se encuentran detalladas las distintas implementaciones utilizadas para la evaluación de performance: \mintinline{haskell}{LockFreeStack} (sección \ref{sec:lfs}), \mintinline{haskell}{EliminationBackoffStack} (sección \ref{sec:ebs}), y \mintinline{haskell}{StackSTM}. Las primeras dos estructuras son maneras conocidas para la implementación de una pila concurrente y se encuentran detalladas en \cite{shavit} que hacen uso de la primitiva de sincronización \emph{compare and set}. La estructura restante es una implementación \emph{naive} de una pila concurrente utilizando las herramientas provistas la librería STM de Haskell.
 
 En el código utilizado para la experimentación, cada versión de \mintinline{haskell}{push} y \mintinline{haskell}{pop} tendrán su nombre extendido por un texto para denotar a qué implementación pertenece. Por ejemplo, las funciones de un \mintinline{haskell}{LockFreeStack} implementado sobre IO tienen los nombres \mintinline{haskell}{pushLFSIO} y \mintinline{haskell}{popLFSIO}.
 
@@ -122,7 +122,7 @@ popLFSSTM lfs = do
 La idea detrás de los algoritmos es que cada hilo de ejecución intente realizar una operación de escritura o lectura sobre la pila. Si el hilo no es exitoso en el intento, debe volver a intentar luego de esperar una cantidad de tiempo determinada por una estructura de backoff. Este comportamiento se puede apreciar en la figura~\ref{fig:lfs-push-pop} donde se muestra el código de las funciones \mintinline{haskell}{pushLFSIO} y \mintinline{haskell}{popLFSIO}. En ellas, se encuentran las llamadas a las funciones \mintinline{haskell}{tryPushIO} y \mintinline{haskell}{tryPopIO} respectivamente que serán detalladas en la subsección~\ref{sub:lfs-intentos}, así también la llamada a la función \mintinline{haskell}{backoff} que se detalla en la subsección~\ref{sub:backoff}.
 
 \subsection{Backoff}\label{sub:backoff}
-En la implementación utilizada, la estructura de backoff utilizada es del tipo de backoff exponencial. Al realizar la operación de backoff, la estructura toma un número aleatorio sobre un rango entre 0 y el límite establecido por parámetro y paraliza la ejecución del thread por esa cantidad de milisegundos. Luego la estructura duplica el valor del límite para la próxima vez que se realice la operación. Esta estructura se encuentra presentada en \hl{referencia a Shavit}
+En la implementación utilizada, la estructura de backoff utilizada es del tipo de backoff exponencial. Al realizar la operación de backoff, la estructura toma un número aleatorio sobre un rango entre 0 y el límite establecido por parámetro y paraliza la ejecución del thread por esa cantidad de milisegundos. Luego la estructura duplica el valor del límite para la próxima vez que se realice la operación. Esta estructura se encuentra presentada en \cite{shavit}.
 
 \begin{figure}[H]
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
@@ -143,7 +143,7 @@ backoff b = do
   \label{fig:backoff-code}
 \end{figure}
 
-La especificación de la función \mintinline{haskell}{backoff} según \hl{referencia a shavit} dicta que el hilo de ejecución debe pausar por una cantidad de milisegundos, por lo cual se vé necesario en la última linea de la figura~\ref{fig:backoff-code} convertir esa cantidad a microsegundos dado que la función \mintinline{haskell}{threadDelay} provista por la librería \mintinline{haskell}{base} \hl{referencia a base} de Haskell toma microsegundos como parámetro.
+La especificación de la función \mintinline{haskell}{backoff} según \cite{shavit} dicta que el hilo de ejecución debe pausar por una cantidad de milisegundos, por lo cual se vé necesario en la última linea de la figura~\ref{fig:backoff-code} convertir esa cantidad a microsegundos dado que la función \mintinline{haskell}{threadDelay} de Haskell toma microsegundos como parámetro \cite{threadDelay}.
 
 \clearpage
 \subsection{Intento de escritura o lectura}\label{sub:lfs-intentos}
@@ -264,7 +264,7 @@ exchangeSTM :: (Eq a) => LockFreeExchanger a -> Maybe a -> Integer -> IO (Maybe 
   \label{fig:exchange-types}
 \end{figure}
 
-Para la implementación de las funciones exchange utilizamos una función auxiliar \mintinline{haskell}{getSlot} para simular el comportamiento de la operación \mintinline{java}{get} de la clase \mintinline{java}{AtomicStampedReference}  \hl{referencia a java docs} ya que la componente \mintinline{haskell}{slot} de un LFEcic tiene este tipo en el código Java que se encuentra en \hl{referencia a Shavit}. A continuación se detallan los tipos de la función en sus variantes IO y STM en la figura \ref{fig:getSlot-types} y su código en la figura \ref{fig:getSlot-code}.
+Para la implementación de las funciones exchange utilizamos una función auxiliar \mintinline{haskell}{getSlot} para simular el comportamiento de la operación \mintinline{java}{get} de la clase \mintinline{java}{AtomicStampedReference}  \cite{asr-java} ya que la componente \mintinline{haskell}{slot} de un LFE tiene este tipo en el código Java que se encuentra en \cite{shavit}. A continuación se detallan los tipos de la función en sus variantes IO y STM en la figura \ref{fig:getSlot-types} y su código en la figura \ref{fig:getSlot-code}.
 
 \begin{figure}[H]
   \centering
@@ -444,7 +444,7 @@ getRange = readIORef.currentRange
   \label{fig:range-policy}
 \end{figure}
 
-Es importante notar que según \hl{referencia a shavit}, cada hilo de ejecución debe tener su propio \mintinline{haskell}{RangePolicy}. Para esto utilizamos la librería \mintinline{haskell}{thread-local-storage} de Haskell para permitir que cada hilo tenga su propia copia de \mintinline{haskell}{RangePolicy}. Esto se muestra en la línea 1 de la figura \ref{fig:ebs-reps} dónde la componente \mintinline{haskell}{policy} tiene tipo \mintinline{haskell}{TLS RangePolicy}.
+Es importante notar que según \cite{shavit}, cada hilo de ejecución debe tener su propio \mintinline{haskell}{RangePolicy}. Para esto utilizamos la librería \mintinline{haskell}{thread-local-storage} de Haskell para permitir que cada hilo tenga su propia copia de \mintinline{haskell}{RangePolicy}. Esto se muestra en la línea 1 de la figura \ref{fig:ebs-reps} dónde la componente \mintinline{haskell}{policy} tiene tipo \mintinline{haskell}{TLS RangePolicy}.
 
 \clearpage
 \subsection{Estrategia de backoff del EliminationBackoffStack}

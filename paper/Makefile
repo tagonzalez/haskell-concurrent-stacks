@@ -1,5 +1,8 @@
 all: ./chapters/**/*.tex
-	pdflatex -shell-escape tesis.tex && pdflatex -shell-escape tesis.tex
+	pdflatex -shell-escape tesis.tex
+	biber tesis
+	pdflatex -shell-escape tesis.tex
+	pdflatex -shell-escape tesis.tex
 	open tesis.pdf
 
 .PHONY: clean

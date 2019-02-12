@@ -21,13 +21,13 @@ A continuación se listan los nombres utilizados para identificar a los experime
 
 \subsection{Hipótesis}\label{subsec:hypothesis}
 La hipótesis manejada fue que la implementación STM \mintinline{haskell}{StackSTM} superaría a varias, si no todas, de las demás implementaciones ya que ha habido mucho trabajo sobre el compilador GHC para poder mejorar la performance de STM.
-Unos resultados parecidos se encuentran en \hl{ref a paper-abq} dónde se comparan dos implementaciones de una misma estructura, una utilizando STM y la otra utilizando algoritmos que utilizan locks sobre la estructura de datos.
+Unos resultados parecidos se encuentran en \cite{abq} dónde se comparan dos implementaciones de una misma estructura, una utilizando STM y la otra utilizando algoritmos que utilizan locks sobre la estructura de datos.
 En este trabajo, los resultados muestran que la implementación STM supera a la otra a medida que aumenta la cantidad de núcleos a utilizar por el procesador entre cada corrida.
 
-También estuvieron en consideración los resultados de \hl{ref a paper-linked-list} donde se comparan implementaciones similares de una lista simplemente encadenada.
+También estuvieron en consideración los resultados de \cite{linked-list} donde se comparan implementaciones similares de una lista simplemente encadenada.
 En estos resultados, la implementación sobre STM no obtiene buenos tiempos de ejecución comparado al resto.
 Sin embargo, esto se debe a que en una lista encadenada, uno la debe recorrer y esto resulta en muchas llamadas a la función \mintinline{haskell}{atomically} para recorrer la lista.
-En el caso de la implementación de \mintinline{haskell}{StackSTM}, cada operación realiza una sola llamada a \mintinline{haskell}{atomically}, ya que las operaciones trabajan sólamente con el tope de la pila, y es por eso que no esperamos resultados similares a \hl{ref a linked list}.
+En el caso de la implementación de \mintinline{haskell}{StackSTM}, cada operación realiza una sola llamada a \mintinline{haskell}{atomically}, ya que las operaciones trabajan sólamente con el tope de la pila, y es por eso que no esperamos resultados similares a \cite{linked-list}.
 
 \subsection{Instrumentación para realizar los experimentos}\label{subsec:experiment-harness}
 Las implementaciones comparadas en los experimentos son \mintinline{haskell}{LockFreeStackIO}, \mintinline{haskell}{LockFreeStackSTM}, \mintinline{haskell}{EliminationBackoffStackIO}, \mintinline{haskell}{EliminationBackoffStackSTM}, y \mintinline{haskell}{StackSTM}. Para cada una de ellas, tendremos un programa Haskell tomará los siguientes parámetros por línea de comando:

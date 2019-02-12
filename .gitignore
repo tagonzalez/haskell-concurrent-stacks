@@ -13,9 +13,15 @@ test.hs
 *.log
 *.fls
 *.fdb_latexmk
-*.aux
+*.aux*
+*.bbl
+*.bcf
+*.run.xml
+*.blg
 _minted-tesis
 *.toc
 tesis.pdf
 configs
 results
+
+samples.bib

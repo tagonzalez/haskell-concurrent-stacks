@@ -6,7 +6,7 @@ import System.Random
 import System.Environment
 import Control.Exception
 import Common.Exceptions
-import Utils
+import ExperimentUtils
 
 import EliminationBackoffStack.EliminationBackoffStackSTM
 
@@ -56,5 +56,4 @@ main = do
     args <- getArgs
     (stack, threadCount, operationCount, pushThreadCount) <- parseCommandLineArguments args
     callPushes stack 1000000
-    timeIt "" $ createThreads stack threadCount pushThreadCount operationCount []
-    return ()
+    timeExperiment $ createThreads stack threadCount pushThreadCount operationCount []

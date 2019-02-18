@@ -1,7 +1,7 @@
 module Main where
 
 import EliminationBackoffStack.EliminationBackoffStackSTM
-import UtilsSTM
+import TestUtils
 import Test.HUnit
 import Control.Concurrent.Async
 import Control.Monad

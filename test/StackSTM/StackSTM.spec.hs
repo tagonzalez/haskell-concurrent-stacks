@@ -12,7 +12,7 @@ import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Exception
 import Common.Exceptions
-import UtilsSTM
+import TestUtils
 
 pushThreadAction stack iterations = do
   if iterations > 0

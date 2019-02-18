@@ -8,7 +8,6 @@ import Control.Exception
 import Common.Exceptions
 import Control.Monad.Loops
 import Data.Maybe
-import Utils
 
 data LockFreeStackIO a = LFSIO { top :: IORef (NodeIO a), backoffLFS :: Backoff }
 

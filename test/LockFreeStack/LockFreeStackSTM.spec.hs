@@ -11,7 +11,7 @@ import Control.Concurrent.Async
 import Control.Concurrent
 import Control.Exception
 import Common.Exceptions
-import UtilsSTM
+import TestUtils
 import Control.Concurrent.STM
 
 pushThreadAction lfs iterations = do

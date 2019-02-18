@@ -10,7 +10,7 @@ import Control.Concurrent.Async
 import Control.Concurrent
 import Control.Exception
 import Common.Exceptions
-import Utils
+import TestUtils
 
 pushThreadAction lfs iterations = do
   if iterations > 0

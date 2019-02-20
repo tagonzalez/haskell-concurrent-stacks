@@ -8,9 +8,13 @@ Luego, se realizaron los tres experimentos comparando las estructuras, alterando
 
 La experimentación consiste en comparar los tiempos de ejecución de un programa Haskell para determinar cuales implementaciones obtienen un mejor rendimiento en tiempo de ejecución respecto de las demás.
 Cada programa será ejecutado varias veces para luego realizar un promedio y poder obtener una apreciación de la consistencia de los resultados con diagramas \emph{boxplot}.
+
+El programa consiste en la creación de hilos de ejecución que pueden ser hilos lectores o escritores.
+Cada hilo realizará una cantidad fija de operaciones sobre la pila implementada: los hilos lectores invocarán llamadas a la función \mintinline{haskell}{pop} mientras que los hilos escritores apilarán un valor aleatorio a la pila utilizando la función \mintinline{haskell}{push} de la implementación. Una vez que todos los hilos terminan, concluye la ejecución.
+
 Los experimentos realizados fueron tres.
-Uno estudia cómo varía el tiempo de ejecución respecto de la variación de la proporción de hilos escritores representado en el valor de la variable \mintinline{haskell}{pushPercentages}.
-Los otros dos estudian cómo la variación de la cantidad de hilos totales afecta el tiempo de ejecución pero con una distinción, en un experimento la cantidad de operaciones, representada por la variable \mintinline{haskell}{operationCount}, es distribuída entre los hilos mientras que en el otro es la cantidad de operaciones que cada hilo debe realizar.
+Uno estudia cómo varía el tiempo de ejecución respecto de la variación de la proporción de hilos escritores, manteniendo constante la cantidad de hilos totales a lo largo del experimento.
+Los otros dos estudian cómo la variación de la cantidad de hilos totales afecta el tiempo de ejecución pero con una distinción, en un experimento la cantidad de operaciones es distribuída entre los hilos mientras que en el otro es la cantidad de operaciones que cada hilo debe realizar. En ambos, la proporción de hilos escritores es constante durante todo el experimento.
 A continuación se listan los nombres utilizados para identificar a los experimentos:
 
 \begin{itemize}
@@ -42,8 +46,8 @@ Las implementaciones comparadas en los experimentos son \mintinline{haskell}{Loc
 \end{itemize}
 
 El programa se encarga de crear una instancia de pila según la implementación y sus parámetros, luego inserta 100000 elementos para evitar que ocurran excepciones por pila vacía durante la ejecución.
-Una vez instanciada la pila, se calcula la cantidad de threads escritores que se deben crear según la proporción dada por \mintinline{haskell}{pushPercentage} sobre \mintinline{haskell}{threadCount} y la cantidad de operaciones que debe realizar cada hilo tomando en cuenta los parámetros \mintinline{haskell}{operationCount} y \mintinline{haskell}{distributeOperations}.
-Finalmente se inicia un reloj al crear los hilos escritores y lectores para que realicen sus operaciones y al finalizar todos los hilos se imprime por pantalla la cantidad de tiempo en segundos transcurrido.
+Una vez instanciada la pila, se calcula la cantidad de hilos escritores que se deben crear según la proporción dada por \mintinline{haskell}{pushPercentage} sobre \mintinline{haskell}{threadCount} y la cantidad de operaciones que debe realizar cada hilo tomando en cuenta los parámetros \mintinline{haskell}{operationCount} y \mintinline{haskell}{distributeOperations}.
+Finalmente se inicia un reloj al crear los hilos escritores y lectores para que realicen sus operaciones y al finalizar todos los hilos se imprime por pantalla la cantidad de tiempo en segundos transcurrido. Este es el comportamiento de la función \mintinline{haskell}{timeExperiment} que aparece en la penúltima línea de la Fig. \ref{fig:expEBSIO}.
 A continuación se presenta el código Haskell del programa para la implementación \mintinline{haskell}{EliminationBackoffStackIO} en la Fig. \ref{fig:expEBSIO}.
 
 \begin{figure}[H]
@@ -95,8 +99,7 @@ main = do
     args <- getArgs
     (stack, threadCount, operationCount, pushThreadCount) <- parseCommandLineArguments args
     callPushes stack 1000000
-    timeIt "" $ createThreads stack threadCount pushThreadCount operationCount []
-    return ()
+    timeExperiment "" $ createThreads stack threadCount pushThreadCount operationCount []
     \end{minted}
     \caption{Código Haskell para la experimentación sobre la implementación \mintinline{haskell}{EliminationBackoffStackIO}}
     \label{fig:expEBSIO}
@@ -109,6 +112,32 @@ Una vez determinada la combinación implementación-cantidad de núcleos, se eje
 Es decir, si el experimento en cuestión busca estudiar cómo la proporción de hilos escritores varía el tiempo de ejecución, el script bash se encargará de ejecutar, para cada combinación de implementación-cantidad de núcleos, el programa Haskell de esa implementación variando el valor del parámetro \mintinline{haskell}{pushPercentages} y manteniendo el resto constantes.
 Para cada valor que puede tomar la variable \mintinline{haskell}{pushPercentages} en este ejemplo, se realizarán varias corridas del mismo programa Haskell y se escribirán los resultados en un archivo CSV para cada combinación implementación-cantidad de núcleos.
 Luego los scripts llaman a un programa Python que creará los gráficos partiendo de los archivos CSV escritos anteriormente.
+
+\subsection{Medición de tiempos}\label{time-measuring}
+Para poder medir el tiempo que toma el programa Haskell en ejecutar todas los hilos de ejecución se utilizó la librería \mintinline{haskell}{clock} \cite{timeMeasuring} de Haskell que provee al programador con distintos tipos de reloj para la medición de tiempos. Se decidió optar por el tipo de reloj \mintinline{haskell}{Monotonic} que no depende del reloj del sistema y por lo tanto no puede ser alterado como el tipo de reloj \mintinline{haskell}{Realtime}.
+
+La función \mintinline{haskell}{timeExperiment} utiliza la función \mintinline{haskell}{getTime} de la librería \mintinline{haskell}{clock} que retorna un valor de tipo \mintinline{haskell}{TimeSpec} el cual luego es convertido a un entero que representa la cantidad de nanosegundos que han transcurrido desde un punto fijo en el pasado como, por ejemplo, el momento de inicio del sistema.
+Se realizan dos llamadas a \mintinline{haskell}{getTime}: una antes de la ejecución de la acción a medir e inmediatamente después de su finalización. Finalmente la diferencia es impresa por pantalla en segundos como muestra la Fig. \ref{fig:timeExperiment}.
+
+\begin{figure}[H]
+    \centering
+\begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+timeExperiment action = do
+  startTime <- (getTime Monotonic) >>= return.toNanoSecs
+  action
+  endTime <- (getTime Monotonic) >>= return.toNanoSecs
+  let inSecs = (fromIntegral (endTime - startTime)) / (10 ** 9)
+  print inSecs
+\end{minted}
+\caption{Código de la función \mintinline{haskell}{timeExperiment}}
+    \label{fig:timeExperiment}
+\end{figure}
+
+\subsection{Detalles de compilación}
+Para la realización de los experimentos, se decidió deshabilitar la funcionalidad de \emph{parallel garbage collection} del compilador GHC de la misma manera que se menciona y por las razones mencionadas en \cite{linked-list}.
+Según el trabajo, el \emph{garbage collector} de GHC presentó dificultades de desempeño cuando se trataba de estructuras que utilizaban el tipo \mintinline{haskell}{TVar}. Dado que esto se debía a un problema del compilador, y no de la librería STM, decidieron deshabilitar el recolector de basura para no perjudicar los resultados de las implementaciones STM.
+
+Para deshabilitar esta funcionalidad, bastó con utilizar la opción \mintinline{haskell}{-I} de GHC que establece cada cuantos segundos debería correr el recolector. Si se le pasa 0 como parámetro a la opción, queda deshabilitada la recollección de basura en tiempo idle \cite{garbagecollection}.
 
 \section{Resultados}\label{sec:results}
 

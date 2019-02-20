@@ -227,6 +227,8 @@ Un \mintinline{haskell}{EliminationBackoffStack} (EBS) es una extensión para un
 
 Para lograr este objetivo, se necesita de tres estructuras de datos auxiliares: \mintinline{haskell}{LockFreeExchanger}, \mintinline{haskell}{EliminationArray}, y \mintinline{haskell}{RangePolicy}. La representación de estas estructuras en sus variantes IO y STM se ve reflejada en la figura \ref{fig:ebs-reps}
 
+La estructura EBS fue propuesta en \cite{ebs} como una alternativa de mejor escalabilidad al LFS y luego mencionada con ejemplos de código Java en \cite{shavit}. Estos últimos ejemplos de código son la base para la implementación descripta a continuación.
+
 \begin{figure}[H]
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 data EliminationBackoffStackIO a = EBSIO { top :: IORef (NodeIO a), capacity :: Int, eliminationArray :: EliminationArrayIO a, policy :: TLS RangePolicy}
@@ -244,7 +246,18 @@ data LockFreeExchangerSTM a = LFESTM {slot :: TVar (Maybe a, State)}
 % Agregar algo de historia sobre cómo surgió la implementación con referencias al Shavit
 \clearpage
 \subsection{LockFreeExchanger}\label{sub-lfe}
-La estructura de datos \mintinline{haskell}{LockFreeExchanger} (LFE) consiste de una referencia que guarda información de estado y un valor asociado. El estado puede tomar 3 posibles valores:
+Un \mintinline{haskell}{LockFreeExchanger} (LFE) consiste de una referencia que guarda información del estado (tipo de datos \mintinline{haskell}{State}) y un valor asociado.
+El valor asociado es representado por el tipo \mintinline{haskell}{Maybe} para poder distinguir cuándo la referencia tiene un valor nulo.
+El estado puede tomar 3 posibles valores:
+
+\begin{figure}[H]
+  \centering
+\begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+data State = EMPTY | WAITING | BUSY
+\end{minted}
+  \caption{Tipo de datos \mintinline{haskell}{State}}
+  \label{fig:state}
+\end{figure}
 
 \begin{itemize}
 \item{\mintinline{haskell}{EMPTY}: no hay ningún valor asociado a la referencia}
@@ -252,7 +265,7 @@ La estructura de datos \mintinline{haskell}{LockFreeExchanger} (LFE) consiste de
 \item{\mintinline{haskell}{BUSY}: un hilo a leído el valor que se encuentra en la referencia y escribe un valor para intercambiar}
 \end{itemize}
 
-La única función que realiza esta estructura de datos es la operación \mintinline{haskell}{exchange}. El método consiste en leer el estado del LFE y realizar la operación correspondiente al estado. La operación debe ocurrir dentro de una ventana de tiempo que es establecida mediante un parámetro \mintinline{haskell}{timeout} al ejecutar la función.
+La única función que realiza esta estructura de datos es la operación \mintinline{haskell}{exchange}. El método consiste en leer el estado del LFE y realizar la acción correspondiente al estado. La operación debe ocurrir dentro de una ventana de tiempo que es establecida mediante un parámetro \mintinline{haskell}{timeout} al invocar la función.
 
 \begin{figure}[H]
   \centering
@@ -264,7 +277,10 @@ exchangeSTM :: (Eq a) => LockFreeExchanger a -> Maybe a -> Integer -> IO (Maybe 
   \label{fig:exchange-types}
 \end{figure}
 
-Para la implementación de las funciones exchange utilizamos una función auxiliar \mintinline{haskell}{getSlot} para simular el comportamiento de la operación \mintinline{java}{get} de la clase \mintinline{java}{AtomicStampedReference}  \cite{asr-java} ya que la componente \mintinline{haskell}{slot} de un LFE tiene este tipo en el código Java que se encuentra en \cite{shavit}. A continuación se detallan los tipos de la función en sus variantes IO y STM en la figura \ref{fig:getSlot-types} y su código en la figura \ref{fig:getSlot-code}.
+Para la implementación de las funciones \mintinline{haskell}{exchange} utilizamos una función auxiliar \mintinline{haskell}{getSlot} para simular el comportamiento de la operación \mintinline{java}{get} de la clase \mintinline{java}{AtomicStampedReference}  \cite{asr-java}, ya que la componente \mintinline{haskell}{slot} de un LFE tiene este tipo en el código Java que se encuentra en \cite{shavit}.
+La función toma una referencia a una tupla de tipo \mintinline{haskell}{(Maybe a,State)} (\mintinline{haskell}{slot}) y una referencia \mintinline{haskell}{IORef} a un valor de tipo \mintinline{haskell}{State} (\mintinline{haskell}{stampHolder}).
+La función se encarga de leer la tupla de la referencia \mintinline{haskell}{slot} para luego escribir su estado en la referencia \mintinline{haskell}{stampHolder} y retornar el valor de la tupla como resultado de la función.
+Los tipos de la función en sus variantes IO y STM en la figura y sus código se encuentran en las figuras \ref{fig:getSlot-types} y \ref{fig:getSlot-code} respectivamente.
 
 \begin{figure}[H]
   \centering
@@ -319,6 +335,7 @@ Si el estado no pasa a \mintinline{haskell}{BUSY} en el ciclo de las líneas 21 
 \begin{figure}[H]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+exchangeIO :: (Eq a) => LockFreeExchangerIO a -> Maybe a -> Integer -> IO (Maybe a)
 exchangeIO lfe myItem timeout = do
   ret <- newIORef True
   res <- newIORef Nothing
@@ -378,13 +395,15 @@ exchangeIO lfe myItem timeout = do
           timeoutNotDone <- systemNanoTime >>= return.((>) timeBound)
           (readIORef ret) >>= return.((&&) timeoutNotDone)
 
-        systemNanoTime = (getTime Realtime) >>= return.toNanoSecs
+        systemNanoTime = (getTime Monotonic) >>= return.toNanoSecs
   \end{minted}
   \caption{Código \mintinline{haskell}{exchangeIO}}
   \label{fig:exchange-io}
 \end{figure}
 
 El código de la variante \mintinline{haskell}{exchangeSTM} es muy similar al que se muestra en la figura \ref{fig:exchange-io}. La diferencia se encuentra en los renombres de las funciones \mintinline{haskell}{getSlotSTM} y \mintinline{haskell}{atomCASSTM}, junto con la diferencia en cómo los algoritmos escriben la componente \mintinline{haskell}{slot} del LFE. En el caso de IO, vemos en el código que basta con un simple \mintinline{haskell}{writeIORef}, mientras que en STM, esta llamada es reemplazada con la llamada a la función \mintinline{haskell}{writeTVar} dentro de un bloque STM englobado por la función \mintinline{haskell}{atomically} para que los cambios se vean reflejados en el contexto de ejecución.
+
+Para la medición de tiempos se utilizó la función \mintinline{haskell}{getTime} de la librería \mintinline{haskell}{clock} para Haskell \cite{timeMeasuring}. El comportamiento de esta función se explica más adelante en la subsección \ref{time-measuring} del capítulo \ref{chap:experiments} de este trabajo.
 
 \subsection{EliminationArray}
 Un \mintinline{haskell}{EliminationArray} es una simple estructura de datos que mantiene un arreglo de instancias de \mintinline{haskell}{LockFreeExchanger} y la información pertinente a la duración del \mintinline{haskell}{timeout} que deberá cumplir cada una de las llamadas a \mintinline{haskell}{exchange} que se realicen.
@@ -444,7 +463,7 @@ getRange = readIORef.currentRange
   \label{fig:range-policy}
 \end{figure}
 
-Es importante notar que según \cite{shavit}, cada hilo de ejecución debe tener su propio \mintinline{haskell}{RangePolicy}. Para esto utilizamos la librería \mintinline{haskell}{thread-local-storage} de Haskell para permitir que cada hilo tenga su propia copia de \mintinline{haskell}{RangePolicy}. Esto se muestra en la línea 1 de la figura \ref{fig:ebs-reps} dónde la componente \mintinline{haskell}{policy} tiene tipo \mintinline{haskell}{TLS RangePolicy}.
+Es importante notar que según \cite{shavit}, cada hilo de ejecución debe tener su propio \mintinline{haskell}{RangePolicy}. Para esto utilizamos la librería \mintinline{haskell}{thread-local-storage} \cite{tls-haskell} de Haskell para permitir que cada hilo tenga su propia copia de \mintinline{haskell}{RangePolicy}. Esto se muestra en la línea 1 de la figura \ref{fig:ebs-reps} dónde la componente \mintinline{haskell}{policy} tiene tipo \mintinline{haskell}{TLS RangePolicy}.
 
 \clearpage
 \subsection{Estrategia de backoff del EliminationBackoffStack}

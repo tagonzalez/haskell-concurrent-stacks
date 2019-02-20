@@ -1,11 +1,10 @@
 @book{shavit,
-    title = {The Art of Multiprocessor Programming},
-    author = {Maurice Herlihy, Nir Shavit},
-    isbn = {978-0-12-370591-4},
-    series = {},
-    year = {2008},
-    publisher = {Elsevier Inc.},
-    keywords = {}
+ author = {Herlihy, Maurice and Shavit, Nir},
+ title = {The Art of Multiprocessor Programming},
+ year = {2008},
+ isbn = {0123705916, 9780123705914},
+ publisher = {Morgan Kaufmann Publishers Inc.},
+ address = {San Francisco, CA, USA},
 }
 
 @inproceedings{abq,
@@ -44,16 +43,62 @@
  address = {New York, NY, USA},
 }
 
-@article{ebs,
+@InProceedings{hash,
+author="Duarte, Rodrigo Medeiros
+and Du Bois, Andr{\'e} Rauber
+and Pilla, Mauricio L.
+and Cavalheiro, Gerson G. H.
+and Reiser, Renata H. S.",
+editor="Castor, Fernando
+and Liu, Yu David",
+title="Concurrent Hash Tables for Haskell",
+booktitle="Programming Languages",
+year="2016",
+publisher="Springer International Publishing",
+address="Cham",
+pages="110--124",
+abstract="This paper presents seven hash table Haskell implementations, ranging from low-level synchronization mechanisms to high-level ones such as transactional memories. The result of the comparison between the algorithms showed that the implementation using the STM Haskell transactional memory library and fine-grain synchronization presented the best performance and good scalability.",
+isbn="978-3-319-45279-1"
+}
+
+@inproceedings{ebs,
+ author = {Hendler, Danny and Shavit, Nir and Yerushalmi, Lena},
+ title = {A Scalable Lock-free Stack Algorithm},
+ booktitle = {Proceedings of the Sixteenth Annual ACM Symposium on Parallelism in Algorithms and Architectures},
+ series = {SPAA '04},
+ year = {2004},
+ isbn = {1-58113-840-7},
+ location = {Barcelona, Spain},
+ pages = {206--215},
+ numpages = {10},
+ url = {http://doi.acm.org/10.1145/1007912.1007944},
+ doi = {10.1145/1007912.1007944},
+ acmid = {1007944},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+}
+
+@online{do-notation,
+    url="https://en.wikibooks.org/wiki/Haskell/do_notation",
+    title="Haskell/do notation - Wikibooks, open books for an open world"
+}
+
+@online{timeMeasuring,
     author = "",
-    title = "",
-    journal = "",
-    volume = "",
-    number = "",
-    pages = "",
-    year = "",
-    DOI = "",
+    title = "System.Clock",
+    url  = "https://hackage.haskell.org/package/clock-0.7.2/docs/System-Clock.html",
+    addendum = "",
     keywords = ""
+}
+
+@online{garbagecollection,
+    title="4.17. Running a compiled program",
+    url="https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/runtime-control.html"
+}
+
+@online{random,
+    url="https://hackage.haskell.org/package/random-1.1/docs/System-Random.html",
+    title="System.Random"
 }
 
 @online{threadDelay,
@@ -64,16 +109,19 @@
     keywords = ""
 }
 
+@online{control-monad,
+    title = "Control.Monad",
+    url = "https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad.html#t:Monad"
+}
+
 @online{asr-java,
     title = "AtomicStampedReference (Java Platform SE 7)",
     url = "https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/atomic/AtomicStampedReference.html"
 }
 
-@online{haskell-timing,
-    author = "",
-    title = "",
-    url  = "",
-    addendum = "",
-    keywords = ""
+@online{tls-haskell,
+    title = "Data.TLS.GHC",
+    url = "https://hackage.haskell.org/package/thread-local-storage-0.2/docs/Data-TLS-GHC.html"
 }
+
 

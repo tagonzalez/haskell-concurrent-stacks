@@ -6,9 +6,11 @@
 
 % Contenido del abstract seguido del noindent
 \noindent
+En este trabajo se realiza una comparación entre distintas maneras de implementar un mismo tipo de datos concurrente en el lenguaje de programación Haskell. El lenguaje provee varias alternativas para resolver los problemas de sincronización que surgen dentro del área de la programación concurrente. Entre ellas, el trabajo se enfoca en las variantes libres de \emph{locks} como el uso de la primitiva \emph{compare and set} y la librería STM.
 
+Se llevo a cabo una experimentación para observar las diferencias entre las distintas implementaciones y se analizaron los resultados para determinar cuales son las implementaciones más apropiadas según varios contextos de uso. Para el análisis también se toma en cuenta la complejidad de los algoritmos y la consistencia en los resultados que producen.
 
 \bigskip
 
 % Palabras clave seguidas del noindent
-\noindent\textbf{Palabras claves:}
+\noindent\textbf{Palabras claves: memoria transaccional, programación concurrente, Haskell, algoritmos optimistas}

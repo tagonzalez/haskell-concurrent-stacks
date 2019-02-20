@@ -1,12 +1,74 @@
 \chapter{Preliminares}\label{chap:prelims}
 
+\section{Haskell como lenguaje imperativo}
 
-\section{Algoritmos libres de locks}\label{sec:lockfree}
-En el contexto de la programación concurrente, los algoritmos libres de locks, también llamados algoritmos optimistas, son algoritmos que actuan sobre un recurso compartido por distintos hilos de ejecución y utilizan una operación atómica como \emph{compare and set} (CAS) para modificar el recurso.
-En el caso que la llamada a CAS falle, el algoritmo vuelve a ejecutarse hasta que el recurso sea modificado con exito.
-Esta clase de algoritmos permiten que los distintos hilos de ejecución no deban frenar su ejecución para esperar que un recurso se libere, como es el caso en algoritmos que utilizan algún tipo de lock sobre un recurso.
-De esta manera uno puede obtener mejores tiempos de ejecución ya que los tiempos de espera son eliminados.
-A continuación se presenta un ejemplo de un contador y una operación \mintinline{haskell}{inc} para incrementar el valor del contador de manera segura.
+Al ser un lenguaje de programación funcional, no es común relacionar los conceptos de lenguajes imperativos con Haskell. No obstante, el lenguaje provee funcionalidades interesantes para utilizar el lenguaje de manera similar a un lenguaje imperativo sin dejar de ser funcional.
+Esto se logra con el uso de la mónada IO y un azucar sintáctico conocido como \emph{\mintinline{haskell}{do} notation}.
+
+\subsection{Mónadas}
+Una mónada es un tipo de datos que facilita la implementación de funciones para representar acciones que no serían triviales utilizando funciones puras (que no causan efectos). Estas tareas incluyen manejo de excepciones, mantener un estado, generar de números aleatorios, y realizar acciones de entrada y salida.
+
+El comportamiento de una mónada por la implementación se define por dos funciones: \mintinline{haskell}{return} y el operador \emph{bind} \mintinline{haskell}{(>>=)}.
+
+\begin{figure}[H]
+  \centering
+\begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+return :: a -> m a
+(>>=)  :: m a -> (a -> m b) -> m b
+\end{minted}
+  \caption{Tipado de las funciones de una mónada \mintinline{haskell}{m}}
+  \label{fig:io-functions}
+\end{figure}
+
+La función \mintinline{haskell}{return} se encarga de convertir un valor pasado por parámetro a un valor mónadico mientras que la función \emph{bind} se ocupa de componer dos acciones IO, pasando el resultado de la primera acción (primer parámetro) a la próxima. Más información sobre las funciones se encuentra detallada en la documentación de la librería Control.Monad \cite{control-monad}.
+
+Una de las mónadas más utilizadas es la mónada IO. Esta permite implementar acciones de entrada/salida como, por ejemplo, imprimir por pantalla.
+
+\begin{figure}[H]
+  \centering
+\begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+randomInt :: IO Int
+randomInt = randomIO :: IO Int
+
+printRandomSum :: IO ()
+printRandomSum = randomInt >>= (\ rand1 -> randomInt >>= (\ rand2 -> print (rand1 + rand2)))
+\end{minted}
+  \caption{Ejemplo de acción monádica \mintinline{haskell}{printRandomSum}}
+  \label{fig:functional-randomSum}
+\end{figure}
+
+En la Fig. \ref{fig:functional-randomSum} se muestra el código para una función \mintinline{haskell}{randomSum} que genera dos números aleatoriamente e imprime la suma por pantalla. Para la generación de números aleatorios se utiliza la función \mintinline{haskell}{randomIO} de la librería \texttt{random} de Haskell \cite{random}. Por más que esta tarea es relativamente simple de realizar en lenguajes de programación imperativos como Java o C++, el código Haskell resulta más complejo de interpretar e implementar ya que resulta más dificil pensar en una acción como ésta como una composición de funciones en vez de una serie de pasos como sería en un lenguaje imperativo.
+
+En un lenguaje imperativo, bastaría con tres pasos: llamar a \mintinline{haskell}{randomInt} y guardar el resultado en una variable, repetir el paso y guardar el resultado en una variable distinta, y finalmente imprimir la suma.
+
+Afortunadamente, el lenguaje Haskell provee lo que se conoce como \emph{\mintinline{haskell}{do}-notation} que permite escribir código imperativo que luego sería interpretado como una composición de funciones. Esta notación es simplemente un azucar sintáctico para facilitar la implementación de acciones monádicas como la presentada en la Fig. \ref{fig:functional-randomSum}. Se puede apreciar cómo la implementación de esta función se facilita gracias a la notación \mintinline{haskell}{do} en la Fig. \ref{fig:do-randomSum} que se presenta a continuación.
+
+\begin{figure}[H]
+  \centering
+\begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
+randomInt :: IO Int
+randomInt = randomIO :: IO Int
+
+printRandomSum :: IO ()
+printRandomSum = do
+  rand1 <- randomInt
+  rand2 <- randomInt
+  print (rand1 + rand2)
+\end{minted}
+  \caption{Código de \mintinline{haskell}{printRandomSum} reescrito con notación \mintinline{haskell}{do}}
+  \label{fig:do-randomSum}
+\end{figure}
+
+En \cite{do-notation} se describe en detalle cómo este azucar sintáctico logra traducir lo que se escribe como código imperativo a código funcional a nivel de compilación.
+
+\section{Algoritmos optimistas}\label{sec:lockfree}
+Los algoritmos optimistas actúan sobre un recurso compartido por distintos hilos de ejecución y utilizan una operación atómica como \emph{compare and set} (CAS) para modificarlo.
+En el caso que la llamada a CAS falle, el algoritmo vuelve a ejecutarse hasta que el recurso sea modificado con éxito.
+
+Esta clase de algoritmos permiten que los distintos hilos de ejecución no deban frenar su ejecución para esperar la liberación de un recurso, como es el caso en algoritmos que utilizan algún tipo de lock sobre un recurso.
+De esta manera, uno puede obtener mejores tiempos de ejecución ya que los tiempos de espera son eliminados.
+
+A continuación se presenta, a modo de ejemplo, una estructura de datos \mintinline{haskell}{Counter} representada por una referencia a un entero y un algoritmo optimista \mintinline{haskell}{inc} para incrementar su valor.
 
 \begin{figure}[H]
 \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
@@ -27,30 +89,29 @@ inc counter = do
 \label{fig:lockfree-counter-example}
 \end{figure}
 
-En el código de la Fig. \ref{fig:lockfree-counter-example} se presenta la estructura del contador: una referencia a un entero.
-La operación \mintinline{haskell}{inc} se encarga de incrementar el valor de esta referencia de manera segura en el caso de que el contador sea compartido con otros hilos de ejecución.
-En el algoritmo para esta operación, primero se declara una referencia booleana \mintinline{haskell}{loop} para luego poder mantener un ciclo con la función de Haskell \mintinline{haskell}{whileM_}.
-En el ciclo se realiza una lectura del valor del contador, guardando el resultado en la variable \mintinline{haskell}{oldValue}, para luego realizar la llamada a la función \mintinline{haskell}{atomCAS}.
+En la Fig. \ref{fig:lockfree-counter-example} se detalla cómo la función \mintinline{haskell}{inc} se encarga de incrementar el valor del contador de manera segura en el caso de que el contador sea compartido con otros hilos de ejecución.
+En el algoritmo, primero se declara una referencia booleana \texttt{loop} para mantener un ciclo con la función de Haskell \texttt{whileM\_}.
+En el ciclo se realiza una lectura del valor del contador, guardando el resultado en la variable \texttt{oldValue}, para luego realizar la llamada a la función \texttt{atomCAS}.
 
-Esta llamada realizará una nueva lectura del valor del contador.
-Si el valor leído coincide con el de \mintinline{haskell}{oldValue} se modifica el valor del contador con el valor de \mintinline{haskell}{newValue}, retornando \mintinline{haskell}{True} como resultado de la función.
-Si los valores no coinciden significa que hubo un hilo de ejecución que logró modificar el valor del contador luego de que lo leamos inicialmente en la línea.
-En este caso no se realizan cambios y la llamada a \mintinline{haskell}{atomCAS} retornará \mintinline{haskell}{False}.
-Es importante notar que todas las acciones de la función \mintinline{haskell}{atomCAS} son realizadas de manera atómica.
+Esta llamada realiza una nueva lectura del valor del contador y lo compara con \texttt{oldValue} para determinar si es correcto modificar el valor.
+Si el valor leído coincide con el de \texttt{oldValue} se modifica el valor del contador con el valor de \texttt{newValue}, retornando \mintinline{haskell}{True} como resultado de la función.
+Si no, significa que un hilo de ejecución distinto al actual logró modificar el valor del contador luego de que el hilo actual lea el valor en la línea 7 del código.
+En este caso no se realizan cambios y la llamada a \texttt{atomCAS} retornará \mintinline{haskell}{False}.
+Es importante notar que todas las acciones de la función \texttt{atomCAS} son realizadas de manera atómica.
 
-Según el valor de retorno, el algoritmo de la función \mintinline{haskell}{inc} terminará la ejecución modificando el valor de la referencia \mintinline{haskell}{loop} a \mintinline{haskell}{False} para detener el ciclo en el caso de éxito o volverá a iniciar el ciclo.
-La línea 12 de la Fig. \ref{fig:lockfree-counter-example} que llama a la función \mintinline{haskell}{return} con parámetro \mintinline{haskell}{()} no realiza ninguna operación y simplemente permite volver a iniciar el ciclo.
+Según el valor de retorno, el algoritmo de la función \mintinline{haskell}{inc} terminará la ejecución modificando el valor de la referencia \texttt{loop} a \mintinline{haskell}{False}, deteniendo el ciclo, o volverá a iniciar el ciclo como se ve en el condicional \mintinline{haskell}{if} de la línea 10.
+La línea 12 de la Fig. \ref{fig:lockfree-counter-example} que llama a la función \texttt{return} con parámetro \mintinline{haskell}{()} no realiza ninguna operación y simplemente permite volver a iniciar el ciclo.
 
-En este trabajo vamos a utilizar este esquema de algoritmos para varias de las implementaciones. Tendremos también variantes para la implementación de algoritmos de este estilo ya que es posible definir estos algoritmos utilizando distintas primitivas de sincronización para sobre las cuales se pueden implementar distintas versiones de la función \mintinline{haskell}{atomCAS}.
-Estas versiones se detallan a continuación en la sección \ref{sec:primitives}.
+En este trabajo se utiliza este esquema de algoritmos en varias de las implementaciones. También se presentan variantes para la implementación de algoritmos de este estilo ya que es posible definirlos utilizando distintas primitivas de sincronización para implementar distintas versiones de \texttt{atomCAS}.
+Estas versiones se detallan en la sección \ref{sec:primitives} que se encuentra a continuación.
 
 \section{Primitivas de sincronización} \label{sec:primitives}
-El lenguaje de programación Haskell ofrece, mediante su compilador GHC, distintas primitivas de sincronización para poder manejar recursos compartidos entre distintos hilos de ejecución.
+El lenguaje de programación Haskell ofrece distintas primitivas de sincronización para poder manejar recursos compartidos entre distintos hilos de ejecución.
 En este trabajo se utilizan los tipos de datos \mintinline{haskell}{IORef} y \mintinline{haskell}{TVar} de la librería \mintinline{haskell}{STM} para las implementaciones que se detallan en el próximo capítulo.
-Estos tipos de datos son distintas maneras de referenciar objetos mutables, similares a punteros en otros lenguajes de programación, y proveen funciones para poder ser modificadas de manera atómica para poder ser utilizadas en programación concurrente.
+Estos tipos de datos son distintas maneras de referenciar objetos mutables, similares a punteros en otros lenguajes de programación, y proveen funciones para ser modificadas de manera atómica.
 
 \subsection{IORef}\label{sub:ioref}
-El tipo de datos \mintinline{haskell}{IORef} es comunmente utilizado en programas Haskell como la manera de referenciar objetos mutables.
+El tipo de datos \mintinline{haskell}{IORef} es comunmente utilizado en programas Haskell como manera de referenciar objetos mutables.
 A continuación se detallan las funciones para crear, leer, escribir y modificar atómicamente los valores contenidos en una referencia \mintinline{haskell}{IORef}.
 
 \begin{figure}[H]
@@ -65,10 +126,10 @@ atomicModifyIORef :: IORef a -> (a -> (a,b)) -> IO b
 \label{fig:ioref-interface}
 \end{figure}
 
-La función \mintinline{haskell}{atomicModifyIORef} de la última línea de la Fig. \ref{fig:ioref-interface} es la única función que realiza una modificación sobre una referencia del tipo \mintinline{haskell}{IORef} atómicamente.
-La función recibe como parámetros una referencia a modificar y una función para modificar el valor contenido en la referencia y retornar un valor en función del valor previo en la referencia como resultado de la función. El código que presenta en la Fig. \ref{fig:atomicModifyIORef-behavior} muestra un comportamiento equivalente al de \mintinline{haskell}{atomicModifyIORef}. Este código se encuentra presentado en el trabajo de \cite{linked-list}.
+La función \mintinline{haskell}{atomicModifyIORef} de la última línea de la Fig. \ref{fig:ioref-interface} es la única función que realiza una modificación sobre una referencia del tipo \mintinline{haskell}{IORef} de manera atómica.
+La función recibe como parámetros una referencia a modificar y una función que cumple dos tareas: modificar el valor contenido en la referencia y luego retornar un valor en función del valor previo contenido en la referencia como resultado de \texttt{atomicModifyIORef}. El código que presenta en la Fig. \ref{fig:atomicModifyIORef-behavior}, previamente presentado en \cite{linked-list}, muestra un comportamiento equivalente al de \mintinline{haskell}{atomicModifyIORef}.
 
-\begin{figure}[tb]
+\begin{figure}[H]
 \centering
 \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 atomicModifyIORef r f = do
@@ -81,12 +142,11 @@ atomicModifyIORef r f = do
 \label{fig:atomicModifyIORef-behavior}
 \end{figure}
 
-La función \mintinline{haskell}{atomicModifyIORef} es crucial para implementar una versión de \mintinline{haskell}{atomCAS} ya que es la única función que permite manipular referencias de tipo \mintinline{haskell}{IORef} de manera atómica.
-Generalmente, una función de CAS como \mintinline{haskell}{atomCAS} debe recibir tres parámetros: la referencia a modificar, el valor previamente leído que compararemos atómicamente con el valor actual de la referencia, y el valor nuevo a guardar en la referencia.
-Luego, el resultado de la función debe ser un booleano que indicará si la comparación entre el valor leído y el valor actual de la referencia es exitosa.
+Para implementar una versión de \texttt{atomCAS} es crucial contar con una función como \mintinline{haskell}{atomicModifyIORef} ya que es la única función que permite manipular referencias de tipo \mintinline{haskell}{IORef} de manera atómica.
+Generalmente, una función de CAS como \texttt{atomCAS} debe recibir tres parámetros: la referencia a modificar, el valor previamente leído a comparar con el valor actual de la referencia atómicamente, y el valor nuevo a guardar en la referencia.
+La función debe retornar un booleano que indica si la comparación entre el valor leído y el valor actual de la referencia es exitosa.
 
-En este caso, para aplicar \mintinline{haskell}{atomCAS} sobre una referencia de tipo IORef, utilizaremos la función de \mintinline{haskell}{atomicModifyIORef} pasándole como segundo parámetro una función que compare el valor leído con el actual y retorne una tupla
-con el valor a guardar en la referencia y el booleano resultante de la comparación.
+En este caso, para aplicar \texttt{atomCAS} sobre una referencia de tipo \mintinline{haskell}{IORef}, utilizaremos la función de \mintinline{haskell}{atomicModifyIORef} pasándole como segundo parámetro una función que compare el valor leído con el actual y retorne una tupla con el valor a guardar en la referencia y el booleano resultante de la comparación.
 Si la operación es exitosa, se guarda el valor nuevo en la referencia.
 En caso contrario, se vuelve a guardar el valor actual.
 Este comportamiento se refleja en el código de la Fig. \ref{fig:atomcasio}, también presentado en \cite{linked-list}.
@@ -103,7 +163,7 @@ atomCASIO ptr old new =
 \label{fig:atomcasio}
 \end{figure}
 
-Implementada esta función, el código para el ejemplo del contador queda de la siguiente manera, utilizando \mintinline{haskell}{IORef} como referencia y las funciones \mintinline{haskell}{readIORef}, \mintinline{haskell}{writeIORef}, y \mintinline{haskell}{atomCASIO}.
+Implementada esta función, se puede reescribir el código del contador como se muestra en la Fig. \ref{fig:lockfree-counter-example-ioref}, utilizando \mintinline{haskell}{IORef} como referencia y las funciones \mintinline{haskell}{readIORef}, \mintinline{haskell}{writeIORef}, y \mintinline{haskell}{atomCASIO}.
 
 \begin{figure}[H]
 \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
@@ -125,11 +185,12 @@ inc counter = do
 \end{figure}
 
 \subsection{STM}\label{sub:stm}
-La librería STM de Haskell tiene el objetivo de ofrecer al programador la posibilidad de componer distintas funciones y que luego estas sean ejecutadas de manera atómica.
+La librería STM de Haskell permite al programador componer distintas funciones a ser ejecutadas de manera atómica.
 Para lograr esto, la librería provee el tipo de mónada STM para distinguir las funciones que se realizan dentro de esta mónada con la mónada IO y el tipo de referencia \mintinline{haskell}{TVar}.
-Es decir, las funciones de la mónada STM sólo pueden componerse con funciones de la misma mónada o funciones puras (que no causan efectos al contexto de ejecución). Una vez realizada la composición de funciones, se llama a la función \mintinline{haskell}{atomically} para que las acciones realizadas dentro de la mónada STM sean realizadas atómicamente y sus efectos sean visibles al nível de la mónada IO.
+Es decir, las funciones de la mónada STM sólo pueden componerse con funciones de la misma mónada o funciones puras (que no causan efectos al contexto de ejecución). Una vez realizada la composición de funciones, se llama a una función \texttt{atomically} para que las acciones realizadas dentro de la mónada STM sean realizadas atómicamente y sus efectos sean visibles al nível de la mónada IO.
+
 Intuitivamente, uno puede interpretar a la composición de funciones STM como una transacción cuyos cambios realizados sólo pueden ser visibles una vez que se completa.
-Dentro de una transacción, se debe utilizar un tipo de referencia distinto de \mintinline{haskell}{IORef}, ya que sus funciones no pueden ser realizadas dentro de la mónada STM. Para esto se tiene el tipo de variable transaccional \mintinline{haskell}{TVar} y funciones para escribir y leerlas.
+Dentro de una transacción, se debe utilizar un tipo de referencia distinto de \mintinline{haskell}{IORef}, ya que sus funciones no pueden invocarse dentro de la mónada STM. Para esto se tiene el tipo de variable transaccional \mintinline{haskell}{TVar} y funciones para su escritura y lectura.
 A continuación se listan las funciones provistas por la librería STM en la Fig. \ref{fig:stm-interface}.
 
 \begin{figure}[H]
@@ -143,10 +204,10 @@ writeTVar :: TVar a -> STM a -> a -> STM ()
 \label{fig:stm-interface}
 \end{figure}
 
-La librería STM también provee las funciones \mintinline{haskell}{retry} y \mintinline{haskell}{orElse} que permiten manipular el flujo de una transacción para que se realice un reintento o ejecutar una transacción en vez de otra en caso de que no sea exitosa.
-Sin embargo, no fueron necesarias para las implementaciones que se realizaron en este trabajo y se encuentran detalladas en el próximo capítulo.
+La librería STM también provee unas funciones \texttt{retry} y \texttt{orElse} que permiten manipular el flujo de una transacción para que se realice un reintento o ejecutar una transacción en vez de otra en caso de que no sea exitosa.
+Sin embargo, no fueron necesarias para las implementaciones que se realizaron en este trabajo que se encuentran detalladas en el próximo capítulo.
 
-Dadas estas herramientas, se puede realizar una nueva implementación de la función \mintinline{haskell}{atomCAS} sobre STM.
+Dadas estas herramientas, se puede realizar una nueva implementación de la función \texttt{atomCAS} sobre STM.
 El código de la función también fue presentado en \cite{linked-list}.
 
 \begin{figure}[H]
@@ -163,7 +224,7 @@ atomCASSTM ptr old new = atomically $ do
 \caption{\mintinline{haskell}{atomCAS} utilizando STM}
 \end{figure}
 
-Ahora se puede implementar una versión del contador sobre STM utilizando \mintinline{haskell}{TVar} como tipo de referencia y utilizando las funciones \mintinline{haskell}{atomCASSTM}, y \mintinline{haskell}{readTVar}.
+Dadas estas herramientas, uno puede implementar una versión del contador sobre STM utilizando \mintinline{haskell}{TVar} como tipo de referencia y utilizando las funciones \mintinline{haskell}{atomCASSTM}, y \mintinline{haskell}{readTVar}.
 
 \begin{figure}[H]
 \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
@@ -184,9 +245,9 @@ inc counter = do
 \label{fig:lockfree-counter-example-stm}
 \end{figure}
 
-Es importante notar que en el código de la Fig. \ref{fig:lockfree-counter-example-stm} la mónada continúa siendo IO ya que la llamada a la función \mintinline{haskell}{readTVar} está englobada por la función \mintinline{haskell}{atomically}. Este tipo de variaciones se verán reflejadas en varias de las funciones implementadas en el capítulo siguiente.
+Es importante notar que en el código de la Fig. \ref{fig:lockfree-counter-example-stm} la mónada continúa siendo IO ya que la llamada a la función \texttt{readTVar} es invocada dentro de la función \texttt{atomically}.
 
-Además de poder implementar variantes de algoritmos optimistas, podemos implementar nuestro contador de una manera distinta y considerablemente más intuitiva utilizando las funciones STM como se muestra a continuación en la Fig. \ref{fig:counter-example-stm}.
+Además de poder implementar variantes de algoritmos optimistas, podemos implementar nuestro contador de una manera distinta utilizando las funciones STM como se muestra a continuación en la Fig. \ref{fig:counter-example-stm}.
 
 \begin{figure}[H]
 \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
@@ -202,4 +263,4 @@ inc counter = atomically $ do
 \label{fig:counter-example-stm}
 \end{figure}
 
-Se puede apreciar cómo este estilo de algoritmos resultan más intuitivos que sus versiones optimistas gracias a que STM nos permite componer las funciones que necesitamos que sean ejecutadas atómicamente en vez de realizar llamadas a CAS y realizar reintentos en caso de que falle.
+Se puede apreciar cómo este estilo de algoritmos resultan más intuitivos para interpretar e implementar que sus versiones optimistas gracias a que STM nos permite componer las funciones que necesitamos que sean ejecutadas atómicamente en vez de realizar llamadas a CAS y realizar reintentos en caso de que falle.

@@ -1,6 +1,55 @@
 \begin{appendices}
-\chapter{Experimentos para determinar parámetros}
-\chapter{Resultados de los experimentos}
+\chapter{Experimentos para determinar parámetros}\label{config-experiments}
+
+Estos experimentos preliminares utilizan el mismo programa Haskell que la experimentación realizada en el capítulo \ref{chap:experiments} y varía los parámetros de las distintas implementaciones (límites de backoff de un LFS, y capacidad y duración de un EBS) para encontrar la configuración óptima para luego utilizarla en los experimentos detallados en el capítulo \ref{chap:experiments}.
+
+Las variables de control del experimento tomaron los siguientes valores:
+
+\begin{itemize}
+    \item Proporción de hilos escritores: 0.75
+    \item Cantidad de hilos de ejecución: 30
+    \item Cantidad de operaciones realizadas por hilo: 10000
+    \item Cantidad de núcleos del procesador utilizados: 2
+    \item Cantidad de repeticiones de cada corrida: 5
+\end{itemize}
+
+El objetivo del experimento es determinar qué combinación de parámetros era la más adecuada para cada estructura. Es decir, qué combinación de tiempos de backoff mínimo y máximo es óptima para las implementaciones de LFS y qué combinación de capacidad y duración de timeout es óptima para las implementaciones de EBS.
+
+\begin{figure}[H]
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/configs/config-ebsio}
+        \caption{Resultados para EBS sobre IO}
+        \label{config-ebsio}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/configs/config-ebsstm}
+        \caption{Resultados para EBS sobre STM}
+        \label{config-ebsstm}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/configs/config-lfsio}
+        \caption{Resultados para LFS sobre IO}
+        \label{config-lfsio}
+    \end{subfigure}
+    ~
+    \begin{subfigure}[b]{0.49\textwidth}
+        \includegraphics[width=\textwidth]{images/configs/config-lfsstm}
+        \caption{Resultados para LFS sobre STM}
+        \label{config-lfsstm}
+    \end{subfigure}
+    \caption{Resultados de los experimentos para determinar parámetros}
+\end{figure}
+
+De los resultados se observa que, en un LFS, los tiempos de ejecución son menores cuando el límite mínimo de backoff tiene un valor de 100 representados en la líneas de "Backoff mínimo: 100" en las subfiguras \ref{config-lfsstm} y \ref{config-lfsio}.
+Para las implementaciones de EBS, los resultados muestran que el valor óptimo para el parámetro de capacidad es 1.
+
+Según los resultados, no parece haber mucha variación de los tiempos de ejecución según límite máximo de backoff cuando el límite mínimo es de 100. Es por esto que al momento de experimentar se utilizó un valor de 1000 en el límite máximo de backoff para perimitir que el límite tenga un buen margen para crecer.
+
+En cuanto a la duración del timeout para las estructuras EBS, parece ser que a medida que el valor del timeout aumenta el tiempo de ejecución también lo hace. Se decidió entonces utilizar el un timeout con valor de 100 en la experimentación para reducir los tiempos de ejecución y para que también coincida con el límite mínimo de backoff del LFS.
+
+
+\chapter{Resultados de los experimentos}\label{ch:otherResults}
 \section{Experimento \texttt{pushPercentages}}\label{app-pushPercentages}
 
 \begin{figure}[H]

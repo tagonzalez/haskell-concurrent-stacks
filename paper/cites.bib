@@ -8,20 +8,22 @@
 }
 
 @inproceedings{abq,
- author = {Discolo, Anthony and Harris, Tim and Marlow, Simon and Jones, Simon Peyton and Singh, Satnam},
- title = {Lock Free Data Structures Using STM in Haskell},
- booktitle = {Proceedings of the 8th International Conference on Functional and Logic Programming},
- series = {FLOPS'06},
- year = {2006},
- isbn = {3-540-33438-6, 978-3-540-33438-5},
- location = {Fuji-Susono, Japan},
- pages = {65--80},
- numpages = {16},
- url = {http://dx.doi.org/10.1007/11737414_6},
- doi = {10.1007/11737414_6},
- acmid = {2100080},
- publisher = {Springer-Verlag},
- address = {Berlin, Heidelberg},
+  author    = {Anthony Discolo and
+               Tim Harris and
+               Simon Marlow and
+               Simon L. {Peyton Jones} and
+               Satnam Singh},
+  title     = {Lock Free Data Structures Using {STM} in Haskell},
+  booktitle = {Functional and Logic Programming, 8th International Symposium, {FLOPS}
+               2006, Fuji-Susono, Japan, April 24-26, 2006, Proceedings},
+  pages     = {65--80},
+  year      = {2006},
+  crossref  = {DBLP:conf/flops/2006},
+  url       = {https://doi.org/10.1007/11737414\_6},
+  doi       = {10.1007/11737414\_6},
+  timestamp = {Tue, 30 May 2017 16:36:53 +0200},
+  biburl    = {https://dblp.org/rec/bib/conf/flops/DiscoloHMJS06},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 
 @article{linked-list,
@@ -86,7 +88,7 @@ isbn="978-3-319-45279-1"
 @online{timeMeasuring,
     author = "",
     title = "System.Clock",
-    url  = "https://hackage.haskell.org/package/clock-0.7.2/docs/System-Clock.html",
+    url  = {https://hackage.haskell.org/package/clock-0.7.2/docs/System-Clock.html},
     addendum = "",
     keywords = ""
 }
@@ -104,7 +106,7 @@ isbn="978-3-319-45279-1"
 @online{threadDelay,
     author = "",
     title = "Control.Concurrent",
-    url  = "https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Concurrent.html",
+    note = "https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Concurrent.html",
     addendum = "",
     keywords = ""
 }
@@ -124,9 +126,14 @@ isbn="978-3-319-45279-1"
     url = "https://hackage.haskell.org/package/thread-local-storage-0.2/docs/Data-TLS-GHC.html"
 }
 
-@online{treiber,
-    title="Treiber stack - Wikipedia",
-    url="https://en.wikipedia.org/wiki/Treiber_stack"
-}
 
+@techreport{treiber,
+    author = "R. Kent Treiber",
+    title = "Systems Programming: Coping with Parallelism",
+    year = "1986",
+    institution = "IBM Almaden Research Center",
+    month = "April",
+    number = "RJ 5118"
+
+}
 

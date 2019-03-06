@@ -41,18 +41,20 @@ El objetivo del experimento es determinar qué combinación de parámetros era l
     \caption{Resultados de los experimentos para determinar parámetros}
 \end{figure}
 
-De los resultados se observa que, en un LFS, los tiempos de ejecución son menores cuando el límite mínimo de backoff tiene un valor de 100 representados en la líneas de "Backoff mínimo: 100" en las subfiguras \ref{config-lfsstm} y \ref{config-lfsio}.
+De los resultados se observa que, en un LFS, los tiempos de ejecución son menores cuando el límite mínimo de backoff tiene un valor de 100 representados en la líneas de ``Backoff mínimo: 100'' en las subfiguras \ref{config-lfsstm} y \ref{config-lfsio}.
 Para las implementaciones de EBS, los resultados muestran que el valor óptimo para el parámetro de capacidad es 1.
 
 Según los resultados, no parece haber mucha variación de los tiempos de ejecución según límite máximo de backoff cuando el límite mínimo es de 100. Es por esto que al momento de experimentar se utilizó un valor de 1000 en el límite máximo de backoff para perimitir que el límite tenga un buen margen para crecer.
 
-En cuanto a la duración del timeout para las estructuras EBS, parece ser que a medida que el valor del timeout aumenta el tiempo de ejecución también lo hace. Se decidió entonces utilizar el un timeout con valor de 100 en la experimentación para reducir los tiempos de ejecución y para que también coincida con el límite mínimo de backoff del LFS.
+En cuanto a la duración del timeout para las estructuras EBS, a medida que el valor del timeout aumenta el tiempo de ejecución también lo hace. Se decidió entonces utilizar el un timeout con valor de 100 en la experimentación para reducir los tiempos de ejecución y para que también coincida con el límite mínimo de backoff del LFS.
 
-
+\clearpage
 \chapter{Resultados de los experimentos}\label{ch:otherResults}
 \section{Experimento \texttt{pushPercentages}}\label{app-pushPercentages}
 
-\begin{figure}[H]
+El experimento \texttt{pushPercentages} estudia el comportamiento del tiempo de ejecución a medida que varía la proporción de hilos escritores. En las figuras \ref{fig:pushPercentages-boxplots-1} y \ref{fig:pushPercentages-boxplots-4} se presentan los resultados de cada implementación con diagramas \emph{boxplot} para las corridas realizadas en 1 y 4 núcleos respectivamente.
+
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/pushPercentages/plots/expEBSIO-1}
@@ -85,7 +87,7 @@ En cuanto a la duración del timeout para las estructuras EBS, parece ser que a 
     \label{fig:pushPercentages-boxplots-1}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/pushPercentages/plots/expEBSIO-4}
@@ -119,7 +121,10 @@ En cuanto a la duración del timeout para las estructuras EBS, parece ser que a 
 \end{figure}
 
 \section{Experimento \texttt{numberOfThreads}}
-\begin{figure}[H]
+
+El experimento \texttt{numberOfThreads} estudia el comportamiento del tiempo de ejecución a medida que varía la cantidad total de hilos del experimento. En este experimento, la cantidad de operaciones totales aumenta a medida que aumentan los hilos ya que cada hilo que se agrega realiza una cantidad fija de operaciones. En las figuras \ref{fig:numberOfThreads-boxplots-1} y \ref{fig:numberOfThreads-boxplots-4} se presentan los resultados de cada implementación con diagramas \emph{boxplot} para las corridas realizadas en 1 y 4 núcleos respectivamente.
+
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/numberOfThreads/plots/expEBSIO-1}
@@ -152,7 +157,7 @@ En cuanto a la duración del timeout para las estructuras EBS, parece ser que a 
     \label{fig:numberOfThreads-boxplots-1}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/numberOfThreads/plots/expEBSIO-4}
@@ -187,8 +192,10 @@ En cuanto a la duración del timeout para las estructuras EBS, parece ser que a 
 
 
 \section{Experimento \texttt{numberOfThreadsDist}}
+El experimento \texttt{numberOfThreadsDist} estudia el comportamiento del tiempo de ejecución a medida que varía la cantidad total de hilos del experimento. En este experimento, la cantidad de operaciones totales se mantiene constante y se distribuye entre los hilos de ejecución. En las figuras \ref{fig:numberOfThreadsDist-boxplots-1} y \ref{fig:numberOfThreadsDist-boxplots-4} se presentan los resultados de cada implementación con diagramas \emph{boxplot} para las corridas realizadas en 1 y 4 núcleos respectivamente.
 
-\begin{figure}[H]
+
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/numberOfThreadsDist/plots/expEBSIO-1}
@@ -221,7 +228,7 @@ En cuanto a la duración del timeout para las estructuras EBS, parece ser que a 
     \label{fig:numberOfThreadsDist-boxplots-1}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/numberOfThreadsDist/plots/expEBSIO-4}

@@ -11,8 +11,9 @@
 \usepackage{color,soul}
 \usepackage{subcaption}
 \usepackage[toc]{appendix}
+\usepackage{url}
 
-\usepackage{biblatex}
+\usepackage[block=ragged]{biblatex}
 \addbibresource{cites.bib}
 
 \begin{document}
@@ -61,12 +62,12 @@ concurrentes en Haskell}
 
 \input{chapters/conclusion}
 
-\input{chapters/apendice}
 %% ...
 
 %%%% BIBLIOGRAFIA
-\backmatter
 % \bibliography{tesis}
 \printbibliography[title={Bibliografía}]
+\input{chapters/apendice}
+\backmatter
 
 \end{document}

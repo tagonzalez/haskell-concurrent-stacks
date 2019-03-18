@@ -10,6 +10,7 @@ test.hs
 *.gz
 
 # Latex
+*.out
 *.log
 *.fls
 *.fdb_latexmk

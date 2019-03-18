@@ -1,11 +1,6 @@
 \chapter{Implementación}\label{ch:implementacion}
 
-Para este trabajo, se decidió experimentar sobre distintas implementaciones para un mismo tipo de datos abstracto.
-El tipo elegido, una pila, es representado por una referencia a un nodo que contiene un valor y una referencia al nodo que le sigue (que se encuentra debajo del nodo en la pila).
-Para el último nodo de la pila, la referencia al nodo siguiente será denominada como nula.
-El código de esta representación se presenta en la figura \ref{fig:node-rep} con sus variantes de implementación IO y STM.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 data NodeIO a = NdIO { val :: a, next :: IORef (NodeIO a) } | Null
@@ -15,10 +10,7 @@ data NodeSTM a = NdSTM { val :: a, next :: TVar (NodeSTM a) } | Null
   \label{fig:node-rep}
 \end{figure}
 
-Las operaciones a realizar sobre una pila son las de apilar (\mintinline{haskell}{push}) y desapilar (\mintinline{haskell}{pop}).
-Todas las variantes de implementación que realicemos cumplen la misma interfaz para estas funciones, presentada en la figura \ref{fig:interfazStack}.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 push :: Eq a => Stack a -> a -> IO ()
@@ -28,6 +20,14 @@ pop :: Eq a => Stack a -> IO a
   \label{fig:interfazStack}
 \end{figure}
 
+Para este trabajo, se decidió experimentar sobre distintas implementaciones para un mismo tipo de datos abstracto.
+El tipo elegido, una pila, es representado por una referencia a un nodo que contiene un valor y una referencia al nodo que le sigue (que se encuentra debajo del nodo en la pila).
+Para el último nodo de la pila, la referencia al nodo siguiente será denominada como nula.
+El código de esta representación se presenta en la figura \ref{fig:node-rep} con sus variantes de implementación IO y STM.
+
+Las operaciones a realizar sobre una pila son las de apilar (\mintinline{haskell}{push}) y desapilar (\mintinline{haskell}{pop}).
+Todas las variantes de implementación que realicemos cumplen la misma interfaz para estas funciones, presentada en la figura \ref{fig:interfazStack}.
+
 La función \mintinline{haskell}{push} inserta un nuevo nodo al tope de la pila con un valor recibido por parámetro. Por el otro lado, la función pop lee el valor que se encuentra en el tope de la pila y remueve el nodo, retornando el valor contenido en el nodo como resultado. En el caso que no haya ningún elemento en la pila, la ejecución deberá arrojar una excepción.
 
 En este capítulo se encuentran detalladas las distintas implementaciones utilizadas para la evaluación de performance: \mintinline{haskell}{LockFreeStack} (sección \ref{sec:lfs}), \mintinline{haskell}{EliminationBackoffStack} (sección \ref{sec:ebs}), y \mintinline{haskell}{StackSTM} (sección: \ref{sec:stackstm}). Las primeras dos estructuras son maneras conocidas para la implementación de una pila concurrente y se encuentran detalladas en \cite{shavit} que hacen uso de la primitiva de sincronización \emph{compare and set}. La estructura restante es una implementación \emph{naive} de una pila concurrente utilizando las herramientas provistas la librería STM de Haskell.
@@ -35,11 +35,7 @@ En este capítulo se encuentran detalladas las distintas implementaciones utiliz
 En el código utilizado para la experimentación, cada versión de \mintinline{haskell}{push} y \mintinline{haskell}{pop} es nombrada de manera que se puede identificar a qué implementación pertenece. Por ejemplo, las funciones de un \mintinline{haskell}{LockFreeStack} implementado sobre IO tienen los nombres \mintinline{haskell}{pushLFSIO} y \mintinline{haskell}{popLFSIO}.
 
 \section{LockFreeStack}\label{sec:lfs}
-La estructura de datos \mintinline{haskell}{LockFreeStack} (LFS), también conocida como TreiberStack \cite{treiber}, consiste de una pila concurrente libre de locks implementada utilizando algoritmos optimistas. Sus algoritmos consisten en intentar realizar la operación sin tener que pausar la ejecución para esperar un recurso y si hay una falla en el intento, reintentar. En este caso, los algoritmos realizan un backoff previo a realizar un reintento.
-
-La representación de un \mintinline{haskell}{LockFreeStack} consiste de una referencia al tope de la pila y una estructura auxiliar de backoff que será la encargada de determinar la cantidad de tiempo que un hilo debe esperar antes de reintentar.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[breaklines,fontsize=\footnotesize]{haskell}
 data LockFreeStackIO a = LFSIO { top :: IORef (NodeIO a), backoffLFS :: Backoff }
@@ -54,7 +50,7 @@ popLFSSTM :: Eq a => LockFreeStackSTM a -> IO a
   \label{repLFS}
 \end{figure}
 
-\begin{figure}[!h]
+\begin{figure}[t]
   \begin{subfigure}[b]{0.5\textwidth}
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 pushLFSIO lfs value = do
@@ -122,12 +118,15 @@ popLFSSTM lfs = do
   \label{fig:lfs-push-pop}
 \end{figure}
 
+La estructura de datos \mintinline{haskell}{LockFreeStack} (LFS), también conocida como TreiberStack \cite{treiber}, consiste de una pila concurrente libre de locks implementada utilizando algoritmos optimistas. Sus algoritmos consisten en intentar realizar la operación sin tener que pausar la ejecución para esperar un recurso y si hay una falla en el intento, reintentar. En este caso, los algoritmos realizan un backoff previo a realizar un reintento.
+
+La representación de un \mintinline{haskell}{LockFreeStack} consiste de una referencia al tope de la pila y una estructura auxiliar de backoff que será la encargada de determinar la cantidad de tiempo que un hilo debe esperar antes de reintentar.
+
 La idea detrás de los algoritmos es que cada hilo de ejecución intente realizar una operación de escritura o lectura sobre la pila. Si el hilo no es exitoso en el intento, debe volver a intentar luego de esperar una cantidad de tiempo determinada por una estructura de backoff. Este comportamiento se puede apreciar en la figura~\ref{fig:lfs-push-pop} donde se muestra el código de las funciones \mintinline{haskell}{pushLFSIO} y \mintinline{haskell}{popLFSIO}. En ellas, se encuentran las llamadas a las funciones \mintinline{haskell}{tryPushIO} y \mintinline{haskell}{tryPopIO} respectivamente que serán detalladas en la subsección~\ref{sub:lfs-intentos}, así también la llamada a la función \mintinline{haskell}{backoff} que se detalla en la subsección~\ref{sub:backoff}.
 
 \subsection{Backoff}\label{sub:backoff}
-En la implementación, la estructura de backoff es del tipo de backoff exponencial. Al realizar la operación de backoff, la estructura toma un número aleatorio sobre un rango entre 0 y el límite establecido por parámetro y paraliza la ejecución del thread por esa cantidad de milisegundos. Luego la estructura duplica el valor del límite para la próxima vez que se realice la operación. Esta estructura de datos también se encuentra presentada en \cite{shavit}.
 
-\begin{figure}[!h]
+\begin{figure}[t]
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 data Backoff = BCK {minDelay :: Int, maxDelay :: Int, limit :: IORef Int}
 
@@ -146,14 +145,13 @@ backoff b = do
   \label{fig:backoff-code}
 \end{figure}
 
+En la implementación, la estructura de backoff es del tipo de backoff exponencial. Al realizar la operación de backoff, la estructura toma un número aleatorio sobre un rango entre 0 y el límite establecido por parámetro y detiene la ejecución del thread por esa cantidad de milisegundos. Luego la estructura duplica el valor del límite para la próxima vez que se realice la operación. Esta estructura de datos también se encuentra presentada en \cite{shavit}.
+
 La especificación de la función \mintinline{haskell}{backoff} según \cite{shavit} establece que el número generado aleatoriamente sea la cantidad de milisegundos que debe esperar el hilo de ejecución. Por eso, es necesario convertir esa cantidad a microsegundos, tal como aparece en la última linea de la figura~\ref{fig:backoff-code}, ya que la función \mintinline{haskell}{threadDelay} de Haskell toma microsegundos como parámetro \cite{threadDelay}.
 
 \subsection{Intento de escritura o lectura}\label{sub:lfs-intentos}
-El intento de escritura o lectura se ve implementado en las funciones \mintinline{haskell}{tryPush} y \mintinline{haskell}{tryPop} respectivamente. Ambas siguen la misma idea: observar el valor del tope de la pila y luego ejecutar CAS comparando lo que observa actualmente con lo observado en primer lugar. Para el caso del intento de apilar, se retorna el resultado de la ejecución de CAS, y para el intento de desapilar se retorna \mintinline{haskell}{Null} en el caso de fracaso, o el valor leído del tope de la pila en caso de éxito.
 
-En el caso particular en la que un hilo desee remover un objeto en la pila, se debe realizar una verificación que la pila no se encuentre vacía. Si no hay ningún objeto para remover, la ejecución arroja una excepción \mintinline{haskell}{EmptyException}.
-
-\begin{figure}[!h]\label{intentos-types}
+\begin{figure}[t]\label{intentos-types}
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 tryPushIO :: Eq a => LockFreeStackIO a -> NodeIO a -> IO Bool
 tryPopIO :: Eq a => LockFreeStackIO a -> IO (NodeIO a)
@@ -164,7 +162,7 @@ tryPopSTM :: Eq a => LockFreeStackSTM a -> IO (NodeSTM a)
   \caption{Tipo de las funciones de intento de lectura y escritura en sus variantes IO y STM}
 \end{figure}
 
-\begin{figure}[!h]\label{intentos-code}
+\begin{figure}[t]\label{intentos-code}
   \begin{subfigure}[b]{0.5\textwidth}
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 tryPushIO lfs node = do
@@ -185,7 +183,7 @@ tryPushSTM lfs node = do
 \end{subfigure}
 \end{figure}
 
-\begin{figure}[!h]
+\begin{figure}[t]
   \begin{subfigure}[b]{0.55\textwidth}
     \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 tryPopIO lfs = do
@@ -221,16 +219,12 @@ tryPopSTM lfs = do
   \caption{Variantes de implementación para los intentos de escritura y lectura de un LFS}
 \end{figure}
 
+El intento de escritura o lectura se ve implementado en las funciones \mintinline{haskell}{tryPush} y \mintinline{haskell}{tryPop} respectivamente. Ambas siguen la misma idea: observar el valor del tope de la pila y luego ejecutar CAS comparando lo que observa actualmente con lo observado en primer lugar. Para el caso del intento de apilar, se retorna el resultado de la ejecución de CAS, y para el intento de desapilar se retorna \mintinline{haskell}{Null} en el caso de fracaso, o el valor leído del tope de la pila en caso de éxito.
+
+En el caso particular en la que un hilo desee remover un objeto en la pila, se debe realizar una verificación que la pila no se encuentre vacía. Si no hay ningún objeto para remover, la ejecución arroja una excepción \mintinline{haskell}{EmptyException}.
 
 \section{EliminationBackoffStack}\label{sec:ebs}
-
-Un \mintinline{haskell}{EliminationBackoffStack} (EBS) es una extensión para un LFS cuya idea principal es aprovechar el tiempo previo a un reintento para intentar un intercambio con otro hilo que esté esperando para ejecutar la operación inversa. Es decir, un hilo lector intentará realizar un intercambio con un hilo escritor y vice versa.
-
-Para lograr este objetivo, se necesita de tres estructuras de datos auxiliares: \mintinline{haskell}{LockFreeExchanger}, \mintinline{haskell}{EliminationArray}, y \mintinline{haskell}{RangePolicy}. La representación de estas estructuras en sus variantes IO y STM se ve reflejada en la figura \ref{fig:ebs-reps}
-
-La estructura EBS fue propuesta en \cite{ebs} como una alternativa de mejor escalabilidad al LFS y luego mencionada con ejemplos de código Java en \cite{shavit}. Estos últimos ejemplos de código son la base para la implementación que se detalla a continuación.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 data EliminationBackoffStackIO a = EBSIO { top :: IORef (NodeIO a), capacity :: Int, eliminationArray :: EliminationArrayIO a, policy :: TLS RangePolicy}
 data EliminationArrayIO a = EAIO {exchanger :: [LockFreeExchangerIO a], duration :: Integer}
@@ -244,12 +238,14 @@ data LockFreeExchangerSTM a = LFESTM {slot :: TVar (Maybe a, State)}
 \label{fig:ebs-reps}
 \end{figure}
 
-\subsection{LockFreeExchanger}\label{sub-lfe}
-El \mintinline{haskell}{LockFreeExchanger} (LFE) consiste de una referencia que guarda información de estado (tipo de datos \mintinline{haskell}{State}) y un valor a intercambiar.
-El valor a intercambiar es representado por el tipo \mintinline{haskell}{Maybe} para poder representar el caso en el que el LFE esté vacío y no haya hilos tratando de realizar un intercambio.
-El estado puede tomar 3 posibles valores:
+Un \mintinline{haskell}{EliminationBackoffStack} (EBS) es una extensión para un \mintinline{haskell}{LockFreeStack} cuya idea principal es aprovechar el tiempo previo a un reintento para intentar un intercambio con otro hilo que esté esperando para ejecutar la operación inversa. Es decir, un hilo lector intentará realizar un intercambio con un hilo escritor y vice versa.
 
-\begin{figure}[!h]
+Para lograr este objetivo, se necesita de tres estructuras de datos auxiliares: \mintinline{haskell}{LockFreeExchanger}, \mintinline{haskell}{EliminationArray}, y \mintinline{haskell}{RangePolicy}. La representación de estas estructuras en sus variantes IO y STM se ve reflejada en la figura \ref{fig:ebs-reps}
+
+La estructura EBS fue propuesta en \cite{ebs} como una alternativa de mejor escalabilidad al LFS y luego mencionada con ejemplos de código Java en \cite{shavit}. Estos últimos ejemplos de código son la base para la implementación que se detalla a continuación.
+
+\subsection{LockFreeExchanger}\label{sub-lfe}
+\begin{figure}[t]
   \centering
 \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 data State = EMPTY | WAITING | BUSY
@@ -258,15 +254,7 @@ data State = EMPTY | WAITING | BUSY
   \label{fig:state}
 \end{figure}
 
-\begin{itemize}
-\item{\mintinline{haskell}{EMPTY}: no hay ningún valor asociado a la referencia}
-\item{\mintinline{haskell}{WAITING}: un hilo ha escrito un valor en la referencia y está esperando a que un hilo lo lea}
-\item{\mintinline{haskell}{BUSY}: un hilo a leído el valor que se encuentra en la referencia y escribe un valor para intercambiar}
-\end{itemize}
-
-La única función que realiza esta estructura de datos es la operación \mintinline{haskell}{exchange}. El método consiste en leer el estado del LFE y realizar la acción correspondiente al estado. La operación debe ocurrir dentro de una ventana de tiempo que es establecida mediante un parámetro \mintinline{haskell}{timeout} al invocar la función.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 exchangeIO :: (Eq a) => LockFreeExchanger a -> Maybe a -> Integer -> IO (Maybe a)
@@ -276,12 +264,7 @@ exchangeSTM :: (Eq a) => LockFreeExchanger a -> Maybe a -> Integer -> IO (Maybe 
   \label{fig:exchange-types}
 \end{figure}
 
-Para la implementación de la función \mintinline{haskell}{exchange} utilizamos una función auxiliar \mintinline{haskell}{getSlot} para simular el comportamiento de la operación \mintinline{java}{get} de la clase \mintinline{java}{AtomicStampedReference}  \cite{asr-java}, ya que la componente \mintinline{haskell}{slot} de un LFE tiene este tipo en el código Java que se encuentra en \cite{shavit}.
-La función toma una referencia a una tupla de tipo \mintinline{haskell}{(Maybe a,State)} (\mintinline{haskell}{slot}) y una referencia \mintinline{haskell}{IORef} a un valor de tipo \mintinline{haskell}{State} (\mintinline{haskell}{stampHolder}).
-La función \mintinline{haskell}{getSlot} se encarga de leer la tupla de la referencia \mintinline{haskell}{slot} para luego escribir su estado en la referencia \mintinline{haskell}{stampHolder} y retornar el valor de la tupla como resultado de la función.
-Los tipos de la función en sus variantes IO y STM en la figura y sus código se encuentran en las figuras \ref{fig:getSlot-types} y \ref{fig:getSlot-code} respectivamente.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 getSlotIO :: IORef (Maybe a, State) -> IORef State -> IO (Maybe a)
@@ -291,7 +274,7 @@ getSlotSTM :: TVar (Maybe a, State) -> IORef State -> IO (Maybe a)
   \label{fig:getSlot-types}
 \end{figure}
 
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
     \begin{subfigure}[b]{0.4\textwidth}
     \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
@@ -313,6 +296,23 @@ getSlotSTM slot stampHolder = do
   \label{fig:getSlot-code}
 \end{figure}
 
+El \mintinline{haskell}{LockFreeExchanger} (LFE) consiste de una referencia que guarda información de estado (tipo de datos \mintinline{haskell}{State}) y un valor a intercambiar.
+El valor a intercambiar es representado por el tipo \mintinline{haskell}{Maybe} para poder representar el caso en el que el LFE esté vacío y no haya hilos tratando de realizar un intercambio.
+El estado puede tomar 3 posibles valores:
+
+\begin{itemize}
+\item{\mintinline{haskell}{EMPTY}: no hay ningún valor asociado a la referencia}
+\item{\mintinline{haskell}{WAITING}: un hilo ha escrito un valor en la referencia y está esperando a que un hilo lo lea}
+\item{\mintinline{haskell}{BUSY}: un hilo a leído el valor que se encuentra en la referencia y escribe un valor para intercambiar}
+\end{itemize}
+
+La única función que realiza esta estructura de datos es la operación \mintinline{haskell}{exchange}. El método consiste en leer el estado del LFE y realizar la acción correspondiente al estado. La operación debe ocurrir dentro de una ventana de tiempo que es establecida mediante un parámetro \mintinline{haskell}{timeout} al invocar la función.
+
+Para la implementación de la función \mintinline{haskell}{exchange} utilizamos una función auxiliar \mintinline{haskell}{getSlot} para simular el comportamiento de la operación \mintinline{java}{get} de la clase \mintinline{java}{AtomicStampedReference}  \cite{asr-java}, ya que la componente \mintinline{haskell}{slot} de un LFE tiene este tipo en el código Java que se encuentra en \cite{shavit}.
+La función toma una referencia a una tupla de tipo \mintinline{haskell}{(Maybe a,State)} (\mintinline{haskell}{slot}) y una referencia \mintinline{haskell}{IORef} a un valor de tipo \mintinline{haskell}{State} (\mintinline{haskell}{stampHolder}).
+La función \mintinline{haskell}{getSlot} se encarga de leer la tupla de la referencia \mintinline{haskell}{slot} para luego escribir su estado en la referencia \mintinline{haskell}{stampHolder} y retornar el valor de la tupla como resultado de la función.
+Los tipos de la función en sus variantes IO y STM en la figura y sus código se encuentran en las figuras \ref{fig:getSlot-types} y \ref{fig:getSlot-code} respectivamente.
+
 A continuación se lista el comportamiento del algoritmo según los distintos casos del estado que tome el LFE. En cada ítem se notarán las líneas de código de la figura \ref{fig:exchange-io} en las que se puede apreciar el comportamiento detallado.
 
 \begin{itemize}
@@ -331,7 +331,7 @@ Si el estado no pasa a \mintinline{haskell}{BUSY} en el ciclo de las líneas 21 
 \end{itemize}
 \newpage
 
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 exchangeIO :: (Eq a) => LockFreeExchangerIO a -> Maybe a -> Integer -> IO (Maybe a)
@@ -405,10 +405,7 @@ El código de la variante \mintinline{haskell}{exchangeSTM} es muy similar al qu
 Para la medición de tiempos se utilizó la función \mintinline{haskell}{getTime} de la librería \mintinline{haskell}{clock} para Haskell \cite{timeMeasuring}. El comportamiento de esta función se explica más adelante en la subsección \ref{time-measuring} del capítulo \ref{chap:experiments} ya que la función es utilizada para medir los tiempos de ejecución de la experimentación.
 
 \subsection{EliminationArray}
-Un \mintinline{haskell}{EliminationArray} es una simple estructura de datos que mantiene un arreglo de instancias de \mintinline{haskell}{LockFreeExchanger} y la información pertinente a la duración del \mintinline{haskell}{timeout} que deberá cumplir cada una de las llamadas a \mintinline{haskell}{exchange} que se realicen.
-La estructura tiene sólo una función \mintinline{haskell}{visit} que elige aleatoriamente cual de los exchangers de su arreglo utilizar para realizar el intercambio. Luego ejecuta la función \mintinline{haskell}{visit} para el exchanger elegido.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 data EliminationArrayIO a = EAIO {exchanger :: [LockFreeExchangerIO a], duration :: Integer}
@@ -422,15 +419,13 @@ visitIO elimArr value range = do
   \label{fig:elimArr}
 \end{figure}
 
+Un \mintinline{haskell}{EliminationArray} es una simple estructura de datos que mantiene un arreglo de instancias de \mintinline{haskell}{LockFreeExchanger} y la información pertinente a la duración del \mintinline{haskell}{timeout} que deberá cumplir cada una de las llamadas a \mintinline{haskell}{exchange} que se realicen.
+La estructura tiene sólo una función \mintinline{haskell}{visit} que elige aleatoriamente cual de los exchangers de su arreglo utilizar para realizar el intercambio. Luego ejecuta la función \mintinline{haskell}{visit} para el exchanger elegido.
+
 En la figura \ref{fig:elimArr} se muestra el código para un \mintinline{haskell}{EliminationArrayIO}. El código es idéntico al de un \mintinline{haskell}{EliminationArraySTM}, excepto por los renombres correspondientes a las funciones \mintinline{haskell}{exchangeSTM} (línea 6), \mintinline{haskell}{EASTM} (línea 1), y \mintinline{haskell}{visitSTM} junto con el tipado \mintinline{haskell}{LockFreeExchangerSTM} de \mintinline{haskell}{exchanger} en la línea 1.
 
 \subsection{RangePolicy}
-Para poder optimizar las probabilidades de lograr un intercambio en ese tiempo de espera. Un EBS cuenta con otra estructura adicional conocida como \mintinline{haskell}{RangePolicy}. Esta estructura tiene como función manejar el rango del \mintinline{haskell}{EliminationArray} en el cual se eligirá el exchanger a utilizar.
-
-La idea de esta política es aumentar el rango a medida que se realizan intercambios con éxito y reducirlo cuando falle.
-Al reducir el rango aumenta la probabilidad de que dos hilos elijan la misma posición del arreglo para realizar el intercambio, y al incrementarlo se permite que más intercambios sucedan al mismo tiempo si es que hay suficientes hilos como para cubrir las posiciones del arreglo.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 data RangePolicy = RgPlcy {maxRange :: IORef Int, currentRange :: IORef Int}
@@ -463,18 +458,15 @@ getRange = readIORef.currentRange
   \label{fig:range-policy}
 \end{figure}
 
+Para poder optimizar las probabilidades de lograr un intercambio en ese tiempo de espera. Un EBS cuenta con otra estructura adicional conocida como \mintinline{haskell}{RangePolicy}. Esta estructura tiene como función manejar el rango del \mintinline{haskell}{EliminationArray} en el cual se eligirá el exchanger a utilizar.
+
+La idea de esta política es aumentar el rango a medida que se realizan intercambios con éxito y reducirlo cuando falle.
+Al reducir el rango aumenta la probabilidad de que dos hilos elijan la misma posición del arreglo para realizar el intercambio, y al incrementarlo se permite que más intercambios sucedan al mismo tiempo si es que hay suficientes hilos como para cubrir las posiciones del arreglo.
+
 Es importante notar que según \cite{shavit}, cada hilo de ejecución debe tener su propio \mintinline{haskell}{RangePolicy}. Para esto utilizamos la librería \texttt{thread-local-storage} \cite{tls-haskell} de Haskell para permitir que cada hilo tenga su propia instancia de \mintinline{haskell}{RangePolicy}. Esto se muestra en la línea 1 de la figura \ref{fig:ebs-reps} donde la componente \mintinline{haskell}{policy} tiene tipo \mintinline{haskell}{TLS RangePolicy}.
 
 \subsection{Estrategia de backoff del EliminationBackoffStack}
-La estructura \mintinline{haskell}{EliminationBackoffStack} (EBS) tiene un comportamiento muy similar a un \mintinline{haskell}{LockFreeStack}. La diferencia se encuentra en las acciones que cada estructura realiza cuando la operación inicial falla, y por lo tanto debe esperar antes de reintentar. En el caso del LFS, el hilo debe esperar un tiempo sin realizar ninguna acción y reintenta, mientras que en un EBS este intenta aprovechar el tiempo de espera para realizar un intercambio con otro hilo que haya fallado su intento.
-
-Luego, en las funciones de apilar y desapilar, se intenta realizar la operación con las mismas funciones que utiliza un LFS, y en el caso de que haya una falla, se obtiene el rango dictado por el \mintinline{haskell}{RangePolicy} y se llama a la función \mintinline{haskell}{visit} del \mintinline{haskell}{EliminationArray} con el rango pasado como argumento.
-
-En el código que se encuentra en las figuras \ref{pushEBSIO-code} y \ref{popEBSIO-code} se puede ver que a cada llamada de la función \mintinline{haskell}{visitIO} se la rodea por la función \mintinline{haskell}{catch} para poder analizar si hubo excepciones arrojadas. De esta manera, el algoritmo determina si el intercambio fue exitoso y modifica la política de rango con las llamadas a las funciones \mintinline{haskell}{recordEliminationTimeout} en caso de fracaso y \mintinline{haskell}{recordEliminationSuccess} en caso de éxito. También se puede ver el uso de las funciones \mintinline{haskell}{tryPushIO} y \mintinline{haskell}{tryPopIO} que son las mismas funciones que se utilizan en un LFS, detalladas en la subsección \ref{sub:lfs-intentos}.
-
-El código para estas funciones es idéntico en la variante STM del EBS, exceptuando los renombres de las funciones y estructuras utilizadas en las distintas estructuras como \mintinline{haskell}{EliminationBackoffStackSTM}, \mintinline{haskell}{newNodeSTM}, \mintinline{haskell}{visitSTM}, \mintinline{haskell}{tryPopSTM}, y \mintinline{haskell}{tryPushSTM}.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 pushEBSIO :: Eq a => EliminationBackoffStackIO a -> a -> IO ()
@@ -503,7 +495,7 @@ pushEBSIO ebs value = do
   \label{pushEBSIO-code}
 \end{figure}
 
-\begin{figure}[!h]
+\begin{figure}[t]
 \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 popEBSIO :: Eq a => EliminationBackoffStackIO a -> IO a
 popEBSIO ebs = do
@@ -535,12 +527,16 @@ popEBSIO ebs = do
   \label{popEBSIO-code}
 \end{figure}
 
+La estructura \mintinline{haskell}{EliminationBackoffStack} (EBS) tiene un comportamiento muy similar a un \mintinline{haskell}{LockFreeStack}. La diferencia se encuentra en las acciones que cada estructura realiza cuando la operación inicial falla, y por lo tanto debe esperar antes de reintentar. En el caso del LFS, el hilo debe esperar un tiempo sin realizar ninguna acción y reintenta, mientras que en un EBS este intenta aprovechar el tiempo de espera para realizar un intercambio con otro hilo que haya fallado su intento.
+
+Luego, en las funciones de apilar y desapilar, se intenta realizar la operación con las mismas funciones que utiliza un LFS, y en el caso de que haya una falla, se obtiene el rango dictado por el \mintinline{haskell}{RangePolicy} y se llama a la función \mintinline{haskell}{visit} del \mintinline{haskell}{EliminationArray} con el rango pasado como argumento.
+
+En el código que se encuentra en las figuras \ref{pushEBSIO-code} y \ref{popEBSIO-code} se puede ver que a cada llamada de la función \mintinline{haskell}{visitIO} se la rodea por la función \mintinline{haskell}{catch} para poder analizar si hubo excepciones arrojadas. De esta manera, el algoritmo determina si el intercambio fue exitoso y modifica la política de rango con las llamadas a las funciones \mintinline{haskell}{recordEliminationTimeout} en caso de fracaso y \mintinline{haskell}{recordEliminationSuccess} en caso de éxito. También se puede ver el uso de las funciones \mintinline{haskell}{tryPushIO} y \mintinline{haskell}{tryPopIO} que son las mismas funciones que se utilizan en un LFS, detalladas en la subsección \ref{sub:lfs-intentos}.
+
+El código para estas funciones es idéntico en la variante STM del EBS, exceptuando los renombres de las funciones y estructuras utilizadas en las distintas estructuras como \mintinline{haskell}{EliminationBackoffStackSTM}, \mintinline{haskell}{newNodeSTM}, \mintinline{haskell}{visitSTM}, \mintinline{haskell}{tryPopSTM}, y \mintinline{haskell}{tryPushSTM}.
+
 \section{StackSTM}\label{sec:stackstm}
-La última estructura de datos implementada es \mintinline{haskell}{StackSTM}. La implementación para esta estructura intenta aprovechar lo más posible las herramientas que provee la librería STM de Haskell.
-
-El código para esta implementación se ve en la figura \ref{fig:stack-stm}. Se puede apreciar cómo algoritmos para \mintinline{haskell}{pushStackSTM} y \mintinline{haskell}{popStackSTM} son reducidos a pocas líneas de código comparado a sus otras implementaciones ya que la librería STM permite englobar un bloque de código transaccional dentro de una llamada a la función \mintinline{haskell}{atomically} que asegura que el código será ejecutado atómicamente sin posibilidad que haya conflictos con otros hilos de ejecución.
-
-\begin{figure}[!h]
+\begin{figure}[t]
   \centering
   \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 data StackSTM a = ST {top :: TVar (Node a)}
@@ -569,3 +565,7 @@ popStackSTM st = atomically $ do
   \caption{Implementación completa de \mintinline{haskell}{StackSTM}}
   \label{fig:stack-stm}
 \end{figure}
+La última estructura de datos implementada es \mintinline{haskell}{StackSTM}. La implementación para esta estructura intenta aprovechar lo más posible las herramientas que provee la librería STM de Haskell.
+
+El código para esta implementación se ve en la figura \ref{fig:stack-stm}. Se puede apreciar cómo algoritmos para \mintinline{haskell}{pushStackSTM} y \mintinline{haskell}{popStackSTM} son reducidos a pocas líneas de código comparado a sus otras implementaciones ya que la librería STM permite englobar un bloque de código transaccional dentro de una llamada a la función \mintinline{haskell}{atomically} que asegura que el código será ejecutado atómicamente sin posibilidad que haya conflictos con otros hilos de ejecución.
+

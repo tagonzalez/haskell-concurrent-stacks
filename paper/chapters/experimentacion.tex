@@ -37,7 +37,7 @@ Sin embargo, esto se debe a que una lista encadenada se debe recorrer utilizando
 En el caso de la implementación de \mintinline{haskell}{StackSTM} utilizada en nuestra experimentación, cada operación realiza sólo una llamada a \mintinline{haskell}{atomically}, ya que las operaciones trabajan sólamente con el tope de la pila, y es por eso que es de esperar que los resultados en nuestro caso no se correspondan con los obtenidos en \cite{linked-list}.
 
 \subsection{Instrumentación para realizar los experimentos}\label{subsec:experiment-harness}
-Las implementaciones comparadas en los experimentos son \mintinline{haskell}{LockFreeStackIO}, \mintinline{haskell}{LockFreeStackSTM}, \mintinline{haskell}{EliminationBackoffStackIO}, \mintinline{haskell}{EliminationBackoffStackSTM}, y \mintinline{haskell}{StackSTM}. Para cada una de ellas, tendremos un programa Haskell que tomará los siguientes parámetros por línea de comando:
+Las implementaciones comparadas en los experimentos son \mintinline{haskell}{LockFreeStackIO}, \\ \mintinline{haskell}{LockFreeStackSTM}, \mintinline{haskell}{EliminationBackoffStackIO}, \mintinline{haskell}{EliminationBackoffStackSTM}, \\ y \mintinline{haskell}{StackSTM}. Para cada una de ellas, tendremos un programa Haskell que tomará los siguientes parámetros por línea de comando:
 
 \begin{itemize}
     \item \mintinline{haskell}{min} y \mintinline{haskell}{max}: Los parámetros para la estructura \mintinline{haskell}{LockFreeStack}. Estos consisten de los límites mínimos y máximos de la estructura de backoff que se encuentra detallada en la subsección \ref{sub:backoff}.
@@ -55,7 +55,7 @@ Finalmente se inicia un reloj al crear los hilos escritores y lectores para que 
 
 En la Fig. \ref{fig:expEBSIO} se presenta el código Haskell del programa para la implementación \mintinline{haskell}{EliminationBackoffStackIO}.
 
-\begin{figure}[!h]
+\begin{figure}[t]
     \centering
     \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 callPushes stack operationCount = do
@@ -125,7 +125,7 @@ Para medir el tiempo que toma el programa Haskell en ejecutar todos los hilos de
 La función \mintinline{haskell}{timeExperiment} utiliza la función \mintinline{haskell}{getTime} de la librería \mintinline{haskell}{clock} que retorna un valor de tipo \mintinline{haskell}{TimeSpec} el cual luego es convertido a un entero que representa la cantidad de nanosegundos que han transcurrido desde un punto fijo en el pasado como, por ejemplo, el momento de inicio del sistema.
 Se realizan dos llamadas a \mintinline{haskell}{getTime}: una antes de la ejecución de la acción a medir e inmediatamente después de su finalización. Finalmente la diferencia es impresa por pantalla en segundos como muestra la Fig. \ref{fig:timeExperiment}.
 
-\begin{figure}[!h]
+\begin{figure}[t]
     \centering
 \begin{minted}[linenos,breaklines,fontsize=\footnotesize]{haskell}
 timeExperiment action = do
@@ -177,8 +177,8 @@ A continuación se listan los parámetros que se mantuvieron constantes durante 
 Los resultados, presentados en la Fig. \ref{fig:pushPercentages-all} muestran que las implementaciones de LFS, tanto IO como STM, no parecen variar considerablemente sus tiempos de ejecución según la variación en la proporción de hilos escritores/hilos lectores.
 Las pequeñas variaciones que se presentan para estas dos implementaciones pueden ser causa de distintos tiempos de \emph{backoff} determinado de manera aleatoria. Se puede observar este comportamiento en el gráfico de la subfigura \ref{subfig:pushPercentages-lfsio-2} y \ref{subfig:pushPercentages-lfsstm-2}.
 
-\clearpage
-\begin{figure}[!h]
+
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/pushPercentages/plots/1.png}
@@ -213,7 +213,7 @@ Sobre las implementaciones de LFS, los resultados no presentan una tendencia tan
 Se presenta un gráfico con los resultados para EBS sobre IO con diagramas \emph{boxplot} para analizar la consistencia de la implementación en la Fig. \ref{fig:pushPercentages-ebsio-4}.
 En el gráfico se puede ver que los resultados para una proporción de hilos escritores de 10\% presentan un rango muy amplio y es por eso que se obtiene un valor promedio mayor en esta configuración.
 
-\begin{figure}[!h]
+\begin{figure}[t]
     \centering
     \includegraphics[width=0.5\textwidth]{images/pushPercentages/plots/expEBSIO-4.png}
     \caption{Resultados de EBS sobre IO, con cuatro núcleos de ejecución}
@@ -222,8 +222,8 @@ En el gráfico se puede ver que los resultados para una proporción de hilos esc
 
 La consistencia de cada implementación para producir los mismos resultados se puede apreciar con los diagramas \emph{boxplot} que se encuentran en la figura \ref{fig:pushPercentages-boxplots}. Estos gráficos muestran los resultados para los experimentos ejecutados utilizando dos núcleos del procesador. Los resultados para uno y cuatro núcleos se encuentran disponibles en la sección \ref{app-pushPercentages} del apéndice \ref{ch:otherResults}.
 
-\clearpage
-\begin{figure}[!h]
+
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/pushPercentages/plots/expEBSIO-2}
@@ -256,7 +256,7 @@ La consistencia de cada implementación para producir los mismos resultados se p
     \label{fig:pushPercentages-boxplots}
 \end{figure}
 
-\clearpage
+
 \subsection{Segundo experimento: \mintinline{haskell}{numberOfThreads}}\label{subsec:numberOfThreads}
 Para este experimento se analizó el comportamiento del tiempo de ejecución a medida que se aumentaron la cantidad de hilos de ejecución y la cantidad de operaciones totales.
 Los parámetros tomaron los siguientes valores:
@@ -273,7 +273,7 @@ Los parámetros tomaron los siguientes valores:
 
 En este experimento, a medida que incrementa la cantidad de hilos, la cantidad de operaciones totales realizadas sobre la pila incrementa ya que cada hilo nuevo realiza unas 10000 operaciones adicionales sobre la pila.
 
-\begin{figure}[!h]
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/numberOfThreads/plots/1.png}
@@ -309,8 +309,8 @@ Notar que las implementaciones de LFS, tanto IO como STM, presentan los boxplots
 
 En el caso de las implementaciones de EBS, observamos también diagramas \emph{boxplot} consistentes, aunque se pueden distinguir anomalías en los resultados, como por ejemplo, en la Subfig. \ref{subfig:numberOfThreads-ebsio-2} dónde se encuentra un resultado por encima de los 8 segundos.
 
-\clearpage
-\begin{figure}[!h]
+
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/numberOfThreads/plots/expEBSIO-2}
@@ -345,7 +345,7 @@ En el caso de las implementaciones de EBS, observamos también diagramas \emph{b
 
 Los resultados para uno y cuatro núcleos se encuentran disponibles en la sección \ref{ap-numberOfThreads} del apéndice \ref{ch:otherResults}.
 
-\clearpage
+
 \subsection{Tercer experimento: \mintinline{haskell}{numberOfThreadsDist}}
 Para este experimento se analizó el comportamiento del tiempo de ejecución a medida que se aumentaron la cantidad de hilos de ejecución mantienendo constante la cantidad total de operaciones realizadas sobre la pila.
 Los parámetros tomaron los siguientes valores:
@@ -367,8 +367,8 @@ Los resultados presentes en la Fig. \ref{fig:numberOfThreadsDist-all} muestran t
 Se mantiene que la implementación con mejores tiempos de ejecución es la de \mintinline{haskell}{StackSTM} para uno y dos núcleos, mientras que en el caso de cuatro núcleos es superada por las implementaciones de LFS.
 En este último caso, la diferencia de tiempos entre las implementaciones LFS y la de \mintinline{haskell}{StackSTM} es más notoria que en los experimentos anteriores.
 
-\clearpage
-\begin{figure}[!h]
+
+\begin{figure}[t]
     \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/numberOfThreadsDist/plots/1.png}
@@ -395,8 +395,8 @@ Las tendencias parecen indicar que a medida que aumenta la cantidad de hilos el 
 Sin embargo, se observa un comportamiento errático para los tiempos de ejecución de la implementación de EBS sobre IO cuando se corre el programa sobre un núcleo del procesador.
 Para observar este caso en más detalle, se presenta la siguiente Fig. \ref{fig:numberOfThreadsDist-EBSIO} donde se muestra los diagramas \emph{boxplot} para los resultados de la implementación de EBS sobre IO con un núcleo del procesador.
 
-\clearpage
-\begin{figure}[!h]
+
+\begin{figure}[t]
     \centering
     \includegraphics[width=0.5\textwidth]{images/numberOfThreadsDist/plots/expEBSIO-1.png}
     \caption{Resultados del experimento \mintinline{haskell}{numberOfThreadsDist} para EBS sobre IO}
@@ -407,8 +407,8 @@ Una vez más, se puede apreciar que la implementación sobre IO de EBS ha presen
 Estas irregularidades son la causa de la tendencia presentada en la subfigura \ref{subfig:numberOfThreadsDist-1core}.
 En la Fig. \ref{fig:numberOfThreadsDist-boxplots} se presentan el resto de los gráficos individuales de cada implementación con los diagramas \emph{boxplot} para cada valor.
 
-\clearpage
-\begin{figure}[!h]
+
+\begin{figure}[t]
        \centering
     \begin{subfigure}[b]{0.49\textwidth}
         \includegraphics[width=\textwidth]{images/numberOfThreadsDist/plots/expEBSIO-2}

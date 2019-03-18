@@ -8,4 +8,4 @@ all: ./chapters/**/*.tex
 .PHONY: clean
 
 clean:
-	rm -rf ./**/*.aux _minted-tesis ./**/*.toc ./**/*.log ./**/*.fdb_latexmk ./**/*.fls *.aux *.log *.toc
+	rm -rf ./**/*.aux _minted-tesis ./**/*.toc ./**/*.log ./**/*.fdb_latexmk ./**/*.fls *.aux *.log *.toc *.bbl *.bcf *.blg *.out *.xml

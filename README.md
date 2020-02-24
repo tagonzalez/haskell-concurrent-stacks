@@ -1,4 +1,4 @@
-# HaskellConcurrentStacks
+# Concurrent Stack implementations in Haskell
 
 Source code for various data structures used to represent concurrent stacks in the Haskell programming language used for my Master's thesis.
 
